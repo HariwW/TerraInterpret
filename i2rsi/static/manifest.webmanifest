@@ -1,0 +1,9 @@
+{
+  "name": "I2RSI GeoAI Research Workbench",
+  "short_name": "I2RSI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1324",
+  "theme_color": "#10192c",
+  "icons": []
+}

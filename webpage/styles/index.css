@@ -1,0 +1,892 @@
+.input1 {
+    width: 250px;
+    height: 50px;
+    position: fixed;
+    top: 60%;
+    left: 15%;
+    text-align: center;
+    line-height: 50px;
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-weight: bold;
+    font-size: 25px;
+    color: var(--main-blueGray);
+
+    border-radius: 25px;
+    background: var(--main-white);
+    box-shadow: 5px 5px 10px var(--main-white-shadow),
+    -5px -5px 10px var(--main-white-light);
+
+    opacity: 0;
+    transform: translateX(50px);
+
+    cursor: default;
+    animation: ease;
+    transition: all 0.5s;
+    -webkit-transition: all 0.5s;
+}
+
+.input1.show {
+    opacity: 100%;
+    transform: none;
+}
+
+.input1.hover {
+    background: var(--main-blue);
+    box-shadow: inset 5px 5px 10px var(--main-blue-shadow),
+    inset -5px -5px 10px var(--main-blue-light);
+    text-shadow: 3px 3px 5px var(--main-blue-shadow),
+    -3px -3px 5px var(--main-blue-light);
+    color: var(--main-white);
+}
+
+.input1.ready {
+    background: var(--main-marrsGreen);
+    box-shadow: 10px 10px 20px var(--main-white-shadow);
+    color: var(--main-white);
+    width: 150px;
+}
+
+.input2 {
+    width: 250px;
+    height: 50px;
+    position: fixed;
+    top: 60%;
+    left: 36%;
+    text-align: center;
+    line-height: 50px;
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-weight: bold;
+    font-size: 25px;
+    color: var(--main-blueGray);
+    opacity: 0;
+
+    border-radius: 25px;
+    background: var(--main-white);
+    box-shadow: 5px 5px 10px var(--main-white-shadow),
+    -5px -5px 10px var(--main-white-light);
+
+    cursor: default;
+    animation: ease;
+    transition: all 0.5s;
+    -webkit-transition: all 0.5s;
+}
+
+.input2.hover {
+    background: var(--main-blue);
+    box-shadow: inset 5px 5px 10px var(--main-blue-shadow),
+    inset -5px -5px 10px var(--main-blue-light);
+    text-shadow: 3px 3px 5px var(--main-blue-shadow),
+    -3px -3px 5px var(--main-blue-light);
+    color: var(--main-white);
+}
+
+.input2.show {
+    opacity: 100%;
+    left: 26%;
+}
+
+.input2.ready {
+    background: var(--main-marrsGreen);
+    box-shadow: 10px 10px 20px var(--main-white-shadow);
+    color: var(--main-white);
+    width: 150px;
+}
+
+.input3 {
+    width: 250px;
+    height: 50px;
+    position: fixed;
+    top: 60%;
+    right: 15%;
+    text-align: center;
+    line-height: 50px;
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-weight: bold;
+    font-size: 25px;
+    color: var(--main-blueGray);
+
+    border-radius: 25px;
+    background: var(--main-white);
+    box-shadow: 5px 5px 10px var(--main-white-shadow),
+    -5px -5px 10px var(--main-white-light);
+
+    opacity: 0;
+    transform: translateX(50px);
+
+    cursor: default;
+    animation: ease;
+    transition: all 0.5s;
+    -webkit-transition: all 0.5s;
+}
+
+.input3.show {
+    opacity: 100%;
+    transform: none;
+}
+
+.input3:hover {
+    background: var(--main-blue);
+    box-shadow: inset 5px 5px 10px var(--main-blue-shadow),
+    inset -5px -5px 10px var(--main-blue-light);
+    text-shadow: 3px 3px 5px var(--main-blue-shadow),
+    -3px -3px 5px var(--main-blue-light);
+    color: var(--main-white);
+}
+
+.start {
+    width: 50px;
+    height: 50px;
+    position: fixed;
+    top: 60%;
+    left: 52%;
+    text-align: center;
+    line-height: 50px;
+    color: var(--main-white);
+    fill: var(--main-white);
+    font-size: 0;
+    opacity: 0;
+
+    border-radius: 25px;
+    background: var(--main-prussianBlue);
+    box-shadow: 5px -5px 10px var(--main-white-shadow),
+    -5px 5px 10px var(--main-white-light);
+
+    transform: rotate(90deg);
+    cursor: default;
+    animation: ease-out;
+    transition: all 0.5s;
+    -webkit-transition: all 0.5s;
+}
+
+.start.show {
+    opacity: 100%;
+    left: 42%;
+}
+
+.start.show_n {
+    opacity: 100%;
+    left: 31%;
+}
+
+.start.hover {
+    left: 37%;
+    width: 200px;
+    transform: none;
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-weight: bold;
+    font-size: 25px;
+
+    background: var(--main-blue);
+    box-shadow: inset 5px 5px 10px var(--main-blue-shadow),
+    inset -5px -5px 10px var(--main-blue-light);
+    text-shadow: 3px 3px 5px var(--main-blue-shadow),
+    -3px -3px 5px var(--main-blue-light);
+    color: var(--main-white);
+}
+
+.start.hover_n {
+    left: 26%;
+    width: 200px;
+    transform: none;
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-weight: bold;
+    font-size: 25px;
+
+    background: var(--main-blue);
+    box-shadow: inset 5px 5px 10px var(--main-blue-shadow),
+    inset -5px -5px 10px var(--main-blue-light);
+    text-shadow: 3px 3px 5px var(--main-blue-shadow),
+    -3px -3px 5px var(--main-blue-light);
+    color: var(--main-white);
+}
+
+.img_prev {
+    width: 1500px;
+    height: 1500px;
+    top: -60px;
+    right: -1500px;
+    margin-top: -300px;
+    margin-left: -425px;
+    position: fixed;
+    opacity: 0;
+    z-index: 1;
+
+    border-radius: 750px;
+    border: var(--main-white) solid 10px;
+    background: var(--main-white);
+    box-shadow: 5px 5px 10px var(--main-white-shadow),
+    -5px -5px 10px var(--main-white-light),
+    inset 5px 5px 10px var(--main-white-shadow),
+    inset -5px -5px 10px var(--main-white-light);
+
+    cursor: default;
+    animation: ease-out;
+    transition: all 1s;
+    -webkit-transition: all 1s;
+}
+
+.img_prev.show {
+    right: -850px;
+    opacity: 100%;
+}
+
+.img_prev.move {
+    top: -300px;
+    right: -880px;
+    opacity: 70%;
+}
+
+.img_prev.focus {
+    top: -60px;
+    right: -850px;
+    opacity: 100%;
+    z-index: 2;
+}
+
+.img_prev.unfocus {
+    top: 0;
+    right: -1000px;
+}
+
+.img_prev2 {
+    width: 1500px;
+    height: 1500px;
+    top: -60px;
+    right: -1500px;
+    margin-top: -300px;
+    margin-left: -425px;
+    position: fixed;
+    opacity: 0;
+    z-index: 2;
+
+    border-radius: 750px;
+    border: var(--main-white) solid 10px;
+    background: var(--main-white);
+    box-shadow: 5px 5px 10px var(--main-white-shadow),
+    -5px -5px 10px var(--main-white-light),
+    inset 5px 5px 10px var(--main-white-shadow),
+    inset -5px -5px 10px var(--main-white-light);
+
+    cursor: default;
+    animation: ease-out;
+    transition: all 1s;
+    -webkit-transition: all 1s;
+}
+
+.img_prev2.show {
+    right: -880px;
+    top: 200px;
+    opacity: 100%;
+}
+
+.img_prev2.unfocus {
+    right: -1500px;
+    top: 600px;
+}
+
+.img_prev2.focus {
+    top: -60px;
+    right: -850px;
+    opacity: 100%;
+}
+
+.main_title {
+    width: 800px;
+    height: 200px;
+    left: 15%;
+    top: 15%;
+    position: fixed;
+
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-size: 100px;
+    font-weight: bold;
+    color: var(--main-blueGray);
+
+    opacity: 0;
+    transform: translateY(50px);
+
+    cursor: default;
+    animation: ease;
+    transition: all 0.6s;
+    -webkit-transition: all 0.6s;
+}
+
+.main_title.show {
+    opacity: 100%;
+    transform: none;
+}
+
+.main_title.move {
+    font-size: 75px;
+    top: 20%;
+}
+
+.main_subtitle {
+    width: 1000px;
+    height: 50px;
+    left: 15%;
+    top: 33%;
+    position: fixed;
+
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-size: 30px;
+    color: var(--main-blueGray);
+
+    opacity: 0;
+    transform: translateY(30px);
+
+    cursor: default;
+    animation: ease;
+    transition: all 0.6s;
+    -webkit-transition: all 0.6s;
+}
+
+.main_subtitle.show {
+    opacity: 100%;
+    transform: none;
+}
+
+.main_subtitle.move {
+    font-size: 20px;
+}
+
+#load_bg {
+    margin: 0;
+    background: radial-gradient(#b8bcc0, #e8edf3);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    position: fixed;
+    justify-content: center;
+    align-items: center;
+
+    clip-path: circle(0px at center);
+    opacity: 0;
+    z-index: -1;
+
+    cursor: default;
+    animation: ease;
+    transition: all 0.5s;
+    -webkit-transition: all 0.5s;
+}
+
+#load_bg.show {
+    clip-path: circle(100% at center);
+    opacity: 100%;
+    z-index: 5;
+}
+
+.container {
+    border-radius: 100%;
+    background: linear-gradient(165deg, #e8edf3 0%, #d3d7dc 40%, #96999d 98%, rgb(10, 10, 10) 100%);
+    position: relative;
+
+    width: 700px;
+    height: 700px;
+    opacity: 0;
+
+    cursor: default;
+    animation: ease;
+    transition: all 0.5s 0.5s;
+    -webkit-transition: all 0.5s 0.5s;
+}
+
+.container.show {
+    width: 500px;
+    height: 500px;
+    opacity: 100%;
+}
+
+.loader {
+
+}
+
+.loader:before {
+    position: absolute;
+    content: '';
+    width: 100%;
+    height: 100%;
+    border-radius: 100%;
+    border-bottom: 0 solid #ffffff05;
+
+    box-shadow: 0 -10px 20px 20px rgba(232, 237, 243, 0.25) inset,
+    0 -5px 15px 10px rgba(232, 237, 243, 0.31) inset,
+    0 -2px 5px rgba(232, 237, 243, 0.5) inset,
+    0 -3px 2px rgba(232, 237, 243, 0.73) inset,
+    0 2px 0px #e8edf3,
+    0 2px 3px #e8edf3,
+    0 5px 5px rgba(232, 237, 243, 0.56),
+    0 10px 15px rgba(232, 237, 243, 0.38),
+    0 10px 20px 20px rgba(232, 237, 243, 0.25);
+    filter: blur(3px);
+    animation: 2s rotate linear infinite;
+}
+
+@keyframes rotate {
+    100% {
+        transform: rotate(360deg)
+    }
+}
+
+.loading_text {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    line-height: 700px;
+    text-align: center;
+    font-size: 50px;
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-weight: bold;
+    color: rgba(0, 0, 0, 0.5);
+
+    cursor: default;
+    animation: ease;
+    transition: all 0.5s 0.5s;
+    -webkit-transition: all 0.5s 0.5s;
+}
+
+.loading_text.show {
+    line-height: 500px;
+}
+
+.loading_time {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    line-height: 700px;
+    text-align: center;
+    font-size: 20px;
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-weight: bold;
+    color: rgba(0, 0, 0, 0.7);
+
+    opacity: 0;
+
+    cursor: default;
+    animation: ease;
+    transition: all 0.5s 0.5s;
+    -webkit-transition: all 0.5s 0.5s;
+}
+
+.loading_time.show {
+    line-height: 600px;
+    opacity: 100%;
+}
+
+#rs_input {
+    width: 250px;
+    height: 100px;
+    position: fixed;
+    top: 70%;
+    left: 15%;
+
+    border-radius: 25px;
+    box-sizing: border-box;
+    overflow: hidden;
+    border: 5px var(--main-white) solid;
+    box-shadow: 5px 5px 10px var(--main-white-shadow),
+    -5px -5px 10px var(--main-white-light);
+
+    opacity: 0;
+    transform: translateX(50px);
+
+    cursor: pointer;
+    animation: ease;
+    transition: all 0.5s;
+    -webkit-transition: all 0.5s;
+}
+
+#rs_input.show {
+    opacity: 100%;
+    transform: none;
+}
+
+#rs_input:hover {
+    box-shadow: 0 0 0 var(--main-white-shadow),
+    0 0 0 var(--main-white-light);
+}
+
+#rs_input_bg {
+    width: 100%;
+    height: 100%;
+    opacity: 100%;
+    position: absolute;
+
+    animation: ease;
+    transition: all 0.3s;
+    -webkit-transition: all 0.3s;
+}
+
+#rs_input_bg.hover {
+    opacity: 30%;
+}
+
+#rs_input_txt {
+    width: 100%;
+    height: 100%;
+    line-height: 90px;
+    font-weight: bold;
+    font-size: 25px;
+    text-align: center;
+    color: var(--main-white);
+    position: absolute;
+
+    animation: ease;
+    transition: all 0.3s;
+    -webkit-transition: all 0.3s;
+}
+
+#rs_input_txt.hover {
+    color: var(--main-blueGray);
+}
+
+#select {
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    z-index: 5;
+    margin: 0;
+    padding: 0;
+
+    opacity: 0;
+    transform: translateY(100%);
+
+    cursor: pointer;
+    animation: ease;
+    transition: all 0.5s;
+    -webkit-transition: all 0.5s;
+}
+
+#select.show {
+    opacity: 100%;
+    transform: none;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    margin: 0;
+    padding: 0;
+}
+
+/*.mapboxgl-ctrl-bottom-left div {*/
+/*    display: none !important;*/
+/*}*/
+
+#select_info {
+    background-color: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: rgba(142, 142, 142, 0.19) 0px 6px 15px 0px;
+    -webkit-box-shadow: rgba(142, 142, 142, 0.19) 0px 6px 15px 0px;
+    color: rgba(0, 0, 0, 0.6);
+    border-radius: 5px;
+
+    width: 300px;
+    height: 290px;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    left: 10px;
+    top: 10px;
+    z-index: 6;
+}
+
+.info {
+    width: 95%;
+    height: 25px;
+    margin-left: 2.5%;
+    margin-top: 1%;
+
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-weight: bold;
+    font-size: 20px;
+    line-height: 25px;
+}
+
+.info_c {
+    background-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: rgba(142, 142, 142, 0.19) 0px 6px 15px 0px;
+    -webkit-box-shadow: rgba(142, 142, 142, 0.19) 0px 6px 15px 0px;
+    color: rgba(0, 0, 0, 0.6);
+    border-radius: 5px;
+
+    width: 95%;
+    height: 25px;
+    margin-left: 2.5%;
+    margin-top: 1%;
+
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-weight: bold;
+    font-size: 20px;
+    line-height: 25px;
+}
+
+#select_bt {
+    background-color: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: rgba(142, 142, 142, 0.19) 0px 6px 15px 0px;
+    -webkit-box-shadow: rgba(142, 142, 142, 0.19) 0px 6px 15px 0px;
+    color: rgba(0, 0, 0, 0.6);
+    border-radius: 5px;
+
+    width: 300px;
+    height: 30px;
+    position: fixed;
+    left: 10px;
+    top: 310px;
+    z-index: 6;
+
+    text-align: center;
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-weight: bold;
+    font-size: 20px;
+    line-height: 30px;
+
+    cursor: pointer;
+    animation: ease;
+    transition: all 0.5s;
+    -webkit-transition: all 0.5s;
+}
+
+#select_bt:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+#select_bt.clicked {
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+#upload_bt {
+    background-color: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: rgba(142, 142, 142, 0.19) 0px 6px 15px 0px;
+    -webkit-box-shadow: rgba(142, 142, 142, 0.19) 0px 6px 15px 0px;
+    color: rgba(0, 0, 0, 0.6);
+    border-radius: 5px;
+
+    width: 300px;
+    height: 30px;
+    position: fixed;
+    left: 10px;
+    top: 350px;
+    z-index: 6;
+
+    text-align: center;
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-weight: bold;
+    font-size: 20px;
+    line-height: 30px;
+
+    cursor: pointer;
+    animation: ease;
+    transition: all 0.5s;
+    -webkit-transition: all 0.5s;
+}
+
+#upload_bt:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+#mask {
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    z-index: 5;
+    cursor: crosshair;
+}
+
+#r_pro {
+    width: 50px;
+    height: 50px;
+    border-radius: 15px;
+    background: var(--main-white);
+    box-shadow: 5px 5px 10px var(--main-white-shadow),
+    -5px -5px 10px var(--main-white-light);
+    position: fixed;
+    left: 43%;
+    top: 23%;
+    overflow: hidden;
+    color: var(--main-blueGray);
+
+    cursor: pointer;
+    animation: ease;
+    transition: all 0.3s;
+    -webkit-transition: all 0.3s;
+}
+
+#r_pro:hover {
+    box-shadow: 2px 2px 5px var(--main-white-shadow),
+    -2px -2px 5px var(--main-white-light);
+}
+
+#r_pro.move {
+    transform: translateX(-100px);
+    transition-delay: 0.3s;
+}
+
+#multi {
+    width: 95%;
+    height: 95%;
+    position: fixed;
+    left: 2.5%;
+    top: 2.5%;
+    border-radius: 15px;
+    box-sizing: border-box;
+    border: 5px var(--main-white) solid;
+    background: var(--main-white);
+    overflow-y: scroll;
+
+    opacity: 0;
+    z-index: -1;
+    box-shadow: 0 0 0 var(--main-white-shadow),
+    0 0 0 var(--main-white-light);
+
+    animation: ease-out;
+    transition: all 0.5s;
+    -webkit-transition: all 0.5s;
+}
+
+#multi.show {
+    opacity: 100%;
+    z-index: 3;
+    box-shadow: 5px 5px 10px var(--main-white-shadow),
+    -5px -5px 10px var(--main-white-light);
+}
+
+#multi.show::-webkit-scrollbar {
+    display: none;
+}
+
+.multi_wrapper {
+    height: 60%;
+    width: 31.3%;
+    border-radius: 15px;
+    float: left;
+    margin: 1%;
+    box-shadow: 3px 3px 5px var(--main-white-shadow),
+    -3px -3px 5px var(--main-white-light);
+}
+
+.multi_pic {
+    width: 100%;
+    height: 100%;
+    border-radius: 15px;
+    box-sizing: border-box;
+    border: 5px var(--main-white) solid;
+    text-align: center;
+
+    color: transparent;
+
+    cursor: pointer;
+    animation: ease-out;
+    transition: all 0.3s;
+    -webkit-transition: all 0.3s;
+}
+
+.multi_pic.hover {
+    color: rgb(91, 26, 26);
+}
+
+#multi_go {
+    width: 100px;
+    height: 100px;
+    border-radius: 50px;
+    background-color: var(--main-blueGray);
+    position: fixed;
+    right: 3%;
+    bottom: 5%;
+    margin-right: -25px;
+    margin-bottom: -25px;
+    color: var(--main-white);
+    overflow: hidden;
+
+    z-index: -1;
+    opacity: 0;
+
+    cursor: pointer;
+    animation: ease-out;
+    transition: all 0.5s;
+    -webkit-transition: all 0.5s;
+}
+
+#multi_go.show {
+    z-index: 4;
+    opacity: 100%;
+}
+
+#multi_go:hover {
+    transform: rotateZ(360deg);
+}
+
+#multi_loading {
+    width: 80%;
+    height: 80%;
+    position: fixed;
+    left: 10%;
+    top: 10%;
+    border-radius: 15px;
+    background-color: rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    z-index: -1;
+    opacity: 0;
+
+    animation: ease-out;
+    transition: all 0.5s;
+    -webkit-transition: all 0.5s;
+}
+
+#multi_loading.show {
+    z-index: 4;
+    opacity: 100%;
+}
+
+.multi_loading_logo {
+    width: 200px;
+    height: 200px;
+    border-radius: 100px;
+    color: var(--main-white);
+    overflow: hidden;
+
+    animation: 1s rotate linear infinite;
+}
+
+.multi_loading_text {
+    width: 600px;
+    height: 30px;
+    text-align: center;
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-weight: bold;
+    font-size: 30px;
+    color: var(--main-white);
+}
+
+#warning {
+    width: 600px;
+    height: 30px;
+    position: fixed;
+    top: 55%;
+    left: 15%;
+    /*border: 1px black solid;*/
+    font-family: Ubuntu, "Microsoft YaHei", serif;
+    font-size: 20px;
+    line-height: 30px;
+}

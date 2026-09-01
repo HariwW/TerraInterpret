@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-cmn-Hans">
+<head>
+    <meta charset="UTF-8">
+    <title>上传图片 - 遥感图像智能解译</title>
+    <link href="styles/style.css" rel="stylesheet" type="text/css">
+    <link href="styles/index.css" rel="stylesheet" type="text/css">
+
+    <!-- Mapbox API -->
+    <link rel='stylesheet'
+          href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.3.0/mapbox-gl-geocoder.css'
+          type='text/css'/>
+    <script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.3.0/mapbox-gl-geocoder.min.js'></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.js"></script>
+</head>
+<body>
+<div id="background">
+    <div class="img_prev"></div>
+    <div class="img_prev2"></div>
+    <div class="main_title">
+        遥感图像智能解译
+    </div>
+    <div class="main_subtitle">
+        Intelligent Interpretation of Remote Sensing Images
+    </div>
+    <div id="r_pro" title="更换功能">
+        <svg width="80" height="80" viewBox="-3.5 -3.5 50 50" stroke-width="2" stroke="currentColor" fill="none"
+             stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+            <circle cx="5" cy="18" r="2"></circle>
+            <circle cx="19" cy="6" r="2"></circle>
+            <path d="M19 8v5a5 5 0 0 1 -5 5h-3l3 -3m0 6l-3 -3"></path>
+            <path d="M5 16v-5a5 5 0 0 1 5 -5h3l-3 -3m0 6l3 -3"></path>
+        </svg>
+    </div>
+
+    <div id="warning"></div>
+
+    <input type="file" id="file1" style="display:none; width: 150px;position: fixed;top: 60%;left: 17%;">
+    <div class="input1">
+        选择图片
+    </div>
+    <input type="file" id="file2" style="display:none; width: 150px;position: fixed;top: 60%;left: 35%;">
+    <div class="input2">
+        变化检测
+    </div>
+    <input type="file" id="file3" style="display:none; width: 150px;position: fixed;top: 60%;left: 35%;" multiple>
+    <div class="input3">
+        批处理
+    </div>
+    <div id="multi"></div>
+    <div id="multi_go">
+        <svg width="300" height="300" viewBox="-4.7 -4.7 100 100" stroke-width="2" stroke="currentColor" fill="none"
+             stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+            <circle cx="12" cy="12" r="1"></circle>
+            <path d="M16.924 11.132a5 5 0 1 0 -4.056 5.792"></path>
+            <path d="M3 12a9 9 0 1 0 9 -9"></path>
+        </svg>
+    </div>
+    <div id="multi_loading"></div>
+    <div class="start">
+        <svg width="60" height="60" viewBox="-8.5 -8 50 50" stroke-width="2" stroke="currentColor"
+             stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+            <path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75"></path>
+        </svg>
+    </div>
+    <div id="rs_input">
+        <img id="rs_input_bg" src="./imgs/button_bg.jpeg" alt="button background image" draggable="false">
+        <div id="rs_input_txt">从在线地图选择</div>
+    </div>
+</div>
+<div id="select">
+    <div id="map"></div>
+</div>
+
+<div id="load_bg">
+    <div class="container">
+        <div class="loader"></div>
+        <div class="loading_text">解译中</div>
+        <div class="loading_time"></div>
+    </div>
+</div>
+<script>
+    let url = 'http://127.0.0.1:8080/upload'
+    const method = {{pro}};
+
+    const r_pro = document.getElementById('r_pro');
+    r_pro.onclick = function () {
+        let xhr = new XMLHttpRequest();
+        xhr.open('POST', url, true);
+        let formData = new FormData();
+        formData.append('status', 'change');
+        xhr.send(formData);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                window.location.href = xhr.responseURL
+            }
+        }
+    }
+
+    const type_name = ['目标提取', '变化检测', '目标检测', '地物分类'];
+    const type_eng = ['Object extraction', 'Change detection', 'Object detection', 'Feature classification'];
+
+    const input1 = document.getElementsByClassName('input1')[0];
+    const input_bt1 = document.getElementById('file1');
+    const input2 = document.getElementsByClassName('input2')[0];
+    const input_bt2 = document.getElementById('file2');
+    const input3 = document.getElementsByClassName('input3')[0];
+    const input_bt3 = document.getElementById('file3');
+    const start_bt = document.getElementsByClassName('start')[0];
+    const img_prev = document.getElementsByClassName('img_prev')[0];
+    const img_prev2 = document.getElementsByClassName('img_prev2')[0];
+    const main_title = document.getElementsByClassName('main_title')[0];
+    const main_subtitle = document.getElementsByClassName('main_subtitle')[0];
+    const load_bg = document.getElementById('load_bg');
+    const container = document.getElementsByClassName('container')[0];
+    const loading_text = document.getElementsByClassName('loading_text')[0];
+    const loading_time = document.getElementsByClassName('loading_time')[0];
+    const rs_input = document.getElementById('rs_input');
+    const rs_input_bg = document.getElementById('rs_input_bg');
+    const rs_input_txt = document.getElementById('rs_input_txt');
+    const multi = document.getElementById('multi');
+    const multi_go = document.getElementById('multi_go');
+    const warning = document.getElementById('warning');
+
+    main_title.innerHTML = type_name[method];
+    main_subtitle.innerHTML = type_eng[method];
+    main_title.classList.add('show');
+    main_subtitle.classList.add('show');
+    input1.classList.add('show');
+    input3.classList.add('show');
+    rs_input.classList.add('show');
+
+
+    let img_ready = [0, 0];
+    let data1, data2;
+    input1.onmouseover = function () {
+        if (img_ready[0] === 0) {
+            input1.classList.add('hover');
+        }
+    }
+    input1.onmouseout = function () {
+        if (img_ready[0] === 0) {
+            input1.classList.remove('hover');
+        }
+    }
+    input1.onclick = function () {
+        input_bt1.click();
+    }
+    input3.onclick = function () {
+        input_bt3.click();
+    }
+
+    rs_input.onmouseover = function () {
+        rs_input_bg.classList.add('hover');
+        rs_input_txt.classList.add('hover');
+    }
+    rs_input.onmouseout = function () {
+        rs_input_bg.classList.remove('hover');
+        rs_input_txt.classList.remove('hover');
+    }
+    rs_input.onclick = function () {
+        const select = document.getElementById('select');
+        select.classList.add('show');
+
+        mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
+        const map = new mapboxgl.Map({
+            container: 'map', // container ID
+            style: 'mapbox://styles/mapbox/satellite-v9', // style URL
+            center: [105, 36], // starting position [lng, lat]
+            zoom: 3.4, // starting zoom
+        });
+        map.addControl(new MapboxGeocoder({
+            accessToken: mapboxgl.accessToken,
+            mapboxgl: mapboxgl
+        }));
+        map.addControl(new mapboxgl.NavigationControl());
+        map.addControl(new mapboxgl.GeolocateControl({
+            positionOptions: {
+                enableHighAccuracy: true
+            },
+            trackUserLocation: true
+        }));
+
+        const select_info = document.createElement('div');
+        select_info.id = 'select_info';
+        select.appendChild(select_info);
+        const select_bt = document.createElement('div');
+        select_bt.id = 'select_bt';
+        select.appendChild(select_bt);
+        select_bt.innerHTML = '开始选择';
+
+        const info1 = document.createElement('div');
+        info1.className = 'info';
+        select_info.appendChild(info1);
+        info1.innerHTML = '经度范围';
+        const info1c = document.createElement('div');
+        info1c.className = 'info_c';
+        select_info.appendChild(info1c);
+        info1c.innerHTML = '';
+        const info2 = document.createElement('div');
+        info2.className = 'info';
+        select_info.appendChild(info2);
+        info2.innerHTML = '纬度范围';
+        const info2c = document.createElement('div');
+        info2c.className = 'info_c';
+        select_info.appendChild(info2c);
+        info2c.innerHTML = '';
+        const info3 = document.createElement('div');
+        info3.className = 'info';
+        select_info.appendChild(info3);
+        info3.innerHTML = '缩放系数';
+        const info3c = document.createElement('div');
+        info3c.className = 'info_c';
+        select_info.appendChild(info3c);
+        info3c.innerHTML = '';
+        const info4 = document.createElement('div');
+        info4.className = 'info';
+        select_info.appendChild(info4);
+        info4.innerHTML = '中心坐标';
+        const info4c = document.createElement('div');
+        info4c.className = 'info_c';
+        select_info.appendChild(info4c);
+        info4c.innerHTML = '';
+        const info5 = document.createElement('div');
+        info5.className = 'info';
+        select_info.appendChild(info5);
+        info5.innerHTML = '图像大小';
+        const info5c = document.createElement('div');
+        info5c.className = 'info_c';
+        select_info.appendChild(info5c);
+        info5c.innerHTML = '';
+
+
+        let flag = false;
+        select_bt.onclick = function () {
+            if (!flag) {
+                select_bt.innerHTML = '取消';
+                select_bt.classList.add('clicked');
+
+                const mask = document.createElement('div');
+                mask.id = 'mask';
+                select.appendChild(mask);
+                flag = true;
+
+                let x_s, y_s, x_t, y_t, left, top;
+                let cf = false;
+                mask.onmousedown = function (e) {
+                    if (document.getElementById('upload_bt')) {
+                        document.getElementById('upload_bt').remove();
+                    }
+                    cf = true;
+                    if (document.getElementById('select_box')) {
+                        document.getElementById('select_box').remove();
+                    }
+
+                    const select_box = document.createElement('div');
+                    select_box.id = 'select_box';
+                    mask.appendChild(select_box);
+
+                    x_s = e.clientX;
+                    y_s = e.clientY;
+                    select_box.style.left = x_s.toString() + 'px';
+                    select_box.style.top = y_s.toString() + 'px';
+                    left = x_s;
+                    top = y_s;
+                }
+                mask.onmousemove = function (e) {
+                    if (cf) {
+                        const select_box = document.getElementById('select_box');
+                        x_t = e.clientX;
+                        y_t = e.clientY;
+                        select_box.style.width = Math.abs(x_t - x_s).toString() + 'px';
+                        select_box.style.height = Math.abs(y_t - y_s).toString() + 'px';
+
+                        if ((x_t >= x_s) && (y_t < y_s)) {
+                            select_box.style.top = y_t.toString() + 'px';
+                            top = y_t;
+                        } else if (x_t < x_s) {
+                            select_box.style.left = x_t.toString() + 'px';
+                            left = x_t;
+                            if (y_t < y_s) {
+                                select_box.style.top = y_t.toString() + 'px';
+                                top = y_t;
+                            }
+                        }
+                    }
+                }
+                mask.onmouseup = function () {
+                    cf = false;
+                    const upload_bt = document.createElement('div');
+                    upload_bt.id = 'upload_bt';
+                    select.appendChild(upload_bt);
+                    upload_bt.innerHTML = '上传';
+
+                    let zoom = map.getZoom();
+                    let bounds = map.getBounds();
+                    let lng = bounds._sw.lng + (bounds._ne.lng - bounds._sw.lng) * ((left + Math.abs(x_t - x_s) / 2) / window.innerWidth);
+                    let lat = bounds._sw.lat + (bounds._ne.lat - bounds._sw.lat) * (1 - ((top + Math.abs(y_t - y_s) / 2) / window.innerHeight));
+
+                    info1c.innerHTML = '<center>' + bounds._sw.lng.toFixed(5).toString() + ' ~ ' + bounds._ne.lng.toFixed(5).toString() + '</center>';
+                    info2c.innerHTML = '<center>' + bounds._sw.lat.toFixed(5).toString() + ' ~ ' + bounds._ne.lat.toFixed(5).toString() + '</center>';
+                    info3c.innerHTML = '<center>' + zoom.toFixed(5).toString() + '</center>';
+                    info4c.innerHTML = '<center>' + lng.toFixed(5).toString() + ' , ' + lat.toFixed(5).toString() + '</center>';
+                    info5c.innerHTML = '<center>' + (Math.abs(x_t - x_s) * 2).toString() + ' × ' + (Math.abs(y_t - y_s) * 2).toString() + '</center>';
+
+                    upload_bt.onclick = function () {
+                        load_bg.classList.add('show');
+                        container.classList.add('show');
+                        loading_text.classList.add('show');
+
+                        let img_url = 'https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/' +
+                            lng.toString() + ',' + lat.toString() + ',' + zoom +
+                            '/' + Math.abs(x_t - x_s).toString() + 'x' + (Math.abs(y_t - y_s)).toString() +
+                            '@2x?access_token=' + mapboxgl.accessToken;
+
+                        let xhr = new XMLHttpRequest();
+                        xhr.open('POST', url, true);
+                        let formData = new FormData();
+                        formData.append('status', 'select');
+                        formData.append('img_url', img_url);
+                        xhr.send(formData);
+                        xhr.onreadystatechange = function () {
+                            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                                window.location.href = xhr.responseURL
+                            }
+                        }
+                    }
+                }
+            } else {
+                select_bt.innerHTML = '开始选择';
+                select_bt.classList.remove('clicked');
+                if (document.getElementById('upload_bt')) {
+                    document.getElementById('upload_bt').remove();
+                }
+
+                const mask = document.getElementById('mask');
+                mask.remove();
+                flag = false;
+            }
+        }
+    }
+
+    if (method === 1) {
+        rs_input.style.display = 'none';
+        input3.style.display = 'none';
+        input_bt1.addEventListener('change', function () {
+            let file_path = input_bt1.value;
+            let pos = file_path.lastIndexOf("\\");
+            let filename = file_path.substring(pos + 1);
+            let ext_name = filename.substring(filename.lastIndexOf("."), filename.length);
+            let support_ext = ['.png', '.jpg', 'jpeg']
+            if (support_ext.indexOf(ext_name) === -1) {
+                warning.innerHTML = '错误！上传图片格式有误，支持影像拓展名 .png .jpg .jpeg';
+            } else {
+                img_prev.classList.add('show');
+
+                let file = input_bt1.files[0];
+                let reader = new FileReader();
+                reader.onload = function (e) {
+                    data1 = e.target.result;
+                    let img = new Image();
+                    img.src = data1;
+                    img.onload = function () {
+                        let h = img.height;
+                        let w = img.width;
+                        warning.innerHTML = '分辨率为 ' + h.toString() + ' × ' + w.toString();
+                        if (h > 1200 || w > 1200) {
+                            warning.innerHTML += ' * 影像较大，耗时可能较长...';
+                        }
+                    }
+
+                    img_prev.style.backgroundImage = 'url(' + data1 + ')';
+                    img_prev.style.backgroundSize = '70%';
+                    img_prev.style.backgroundPosition = '0 50%';
+                    img_prev.style.backgroundRepeat = 'no-repeat';
+                };
+                reader.readAsDataURL(file);
+
+                main_title.classList.add('move');
+                main_subtitle.classList.add('move');
+                r_pro.classList.add('move');
+
+                img_ready[0] = 1;
+                input1.classList.remove('hover');
+                input1.classList.add('ready');
+                input1.innerHTML = '<svg width="90" height="90" viewBox="-14 -1 50 50" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">\n' +
+                    '   <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>\n' +
+                    '   <path d="M5 12l5 5l10 -10"></path>\n' +
+                    '</svg>';
+                input2.classList.add('show');
+                input2.onmouseover = function () {
+                    if (img_ready[1] === 0) {
+                        input2.classList.add('hover');
+                    }
+                }
+                input2.onmouseout = function () {
+                    if (img_ready[1] === 0) {
+                        input2.classList.remove('hover');
+                    }
+                }
+                input2.onclick = function () {
+                    input_bt2.click();
+                }
+            }
+        })
+
+        input_bt2.addEventListener('change', function () {
+            let file_path = input_bt2.value;
+            let pos = file_path.lastIndexOf("\\");
+            let filename = file_path.substring(pos + 1);
+            let ext_name = filename.substring(filename.lastIndexOf("."), filename.length);
+            let support_ext = ['.png', '.jpg', 'jpeg']
+            if (support_ext.indexOf(ext_name) === -1) {
+                warning.innerHTML = '错误！上传图片格式有误，支持影像拓展名 .png .jpg .jpeg';
+            } else {
+                img_prev.classList.add('move');
+                img_prev2.classList.add('show');
+
+                img_prev.onmouseover = function () {
+                    img_prev.classList.add('focus');
+                    img_prev2.classList.add('unfocus');
+                }
+
+                img_prev.onmouseout = function () {
+                    img_prev.classList.remove('focus');
+                    img_prev2.classList.remove('unfocus');
+                }
+
+                img_prev2.onmouseover = function () {
+                    img_prev2.classList.add('focus');
+                    img_prev.classList.add('unfocus');
+                }
+
+                img_prev2.onmouseout = function () {
+                    img_prev2.classList.remove('focus');
+                    img_prev.classList.remove('unfocus');
+                }
+
+                let file = input_bt2.files[0];
+                let reader = new FileReader();
+                reader.onload = function (e) {
+                    data2 = e.target.result;
+                    let img = new Image();
+                    img.src = data2;
+                    img.onload = function () {
+                        let h = img.height;
+                        let w = img.width;
+                        warning.innerHTML = '分辨率为 ' + h.toString() + ' × ' + w.toString();
+                        if (h > 1200 || w > 1200) {
+                            warning.innerHTML += '影像较大，耗时可能较长...';
+                        }
+                    }
+
+                    img_prev2.style.backgroundImage = 'url(' + data2 + ')';
+                    img_prev2.style.backgroundSize = '70%';
+                    img_prev2.style.backgroundPosition = '0 20%';
+                    img_prev2.style.backgroundRepeat = 'no-repeat';
+                };
+                reader.readAsDataURL(file);
+
+                img_ready[1] = 1;
+                input2.classList.remove('hover');
+                input2.classList.add('ready');
+                input2.innerHTML = '<svg width="90" height="90" viewBox="-14 -1 50 50" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">\n' +
+                    '   <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>\n' +
+                    '   <path d="M5 12l5 5l10 -10"></path>\n' +
+                    '</svg>';
+                start_bt.classList.add('show');
+                start_bt.onmouseover = function () {
+                    start_bt.classList.add('hover');
+                    start_bt.innerHTML = '开始处理';
+                }
+                start_bt.onmouseout = function () {
+                    start_bt.classList.remove('hover');
+                    start_bt.innerHTML = '  <svg width="60" height="60"\n' +
+                        '             viewBox="-8.5 -8 50 50" stroke-width="2" stroke="currentColor" stroke-linecap="round"\n' +
+                        '             stroke-linejoin="round">\n' +
+                        '            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>\n' +
+                        '            <path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75"></path>\n' +
+                        '        </svg>';
+                }
+
+                start_bt.onclick = function () {
+                    load_bg.classList.add('show');
+                    container.classList.add('show');
+                    loading_text.classList.add('show');
+                    loading_time.innerHTML = '预计用时1~2min';
+                    loading_time.classList.add('show');
+
+                    let xhr = new XMLHttpRequest();
+                    xhr.open('POST', url, true);
+                    let formData = new FormData();
+                    formData.append('status', 'upload')
+                    formData.append('image1', input_bt1.files[0])
+                    formData.append('image2', input_bt2.files[0])
+                    xhr.send(formData)
+                    xhr.onreadystatechange = function () {
+                        if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                            window.location.href = xhr.responseURL
+                        }
+                    }
+                }
+            }
+        })
+    } else {
+        input_bt3.addEventListener('change', function () {
+            multi.classList.add('show');
+            multi_go.classList.add('show');
+            let file = input_bt3.files;
+            let deleted = [];
+            let flag = true;
+            for (let k = 0; k < file.length; k++) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'multi_wrapper';
+                multi.appendChild(wrapper);
+
+                const pic = document.createElement('div');
+                pic.className = 'multi_pic';
+                wrapper.appendChild(pic);
+                pic.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">\n' +
+                    '   <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>\n' +
+                    '   <line x1="4" y1="7" x2="20" y2="7"></line>\n' +
+                    '   <line x1="10" y1="11" x2="10" y2="17"></line>\n' +
+                    '   <line x1="14" y1="11" x2="14" y2="17"></line>\n' +
+                    '   <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"></path>\n' +
+                    '   <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"></path>\n' +
+                    '</svg>';
+                pic.style.lineHeight = pic.offsetHeight.toString() + 'px';
+
+                let reader = new FileReader();
+                reader.onload = function (e) {
+                    let data = e.target.result;
+                    pic.style.backgroundImage = 'url(' + data + ')';
+                    pic.style.backgroundSize = 'cover';
+                };
+                reader.readAsDataURL(file[k]);
+                pic.onmouseover = function () {
+                    if (flag) {
+                        pic.classList.add('hover');
+                    }
+                }
+                pic.onmouseout = function () {
+                    if (flag) {
+                        pic.classList.remove('hover');
+                    }
+                }
+                pic.onclick = function () {
+                    if (flag) {
+                        deleted.push(k);
+                        wrapper.remove();
+                    }
+                }
+            }
+
+            function multi_pro(k) {
+                const load_logo = document.createElement('div');
+                load_logo.className = 'multi_loading_logo';
+                multi_loading.appendChild(load_logo);
+                load_logo.innerHTML = '<svg width="600" height="600" viewBox="-4.7 -4.7 100 100" stroke-width="2" stroke="currentColor" fill="none"\n' +
+                    '             stroke-linecap="round" stroke-linejoin="round">\n' +
+                    '            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>\n' +
+                    '            <circle cx="12" cy="12" r="1"></circle>\n' +
+                    '            <path d="M16.924 11.132a5 5 0 1 0 -4.056 5.792"></path>\n' +
+                    '            <path d="M3 12a9 9 0 1 0 9 -9"></path>\n' +
+                    '        </svg>'
+                const load_text = document.createElement('div');
+                load_text.className = 'multi_loading_text';
+                multi_loading.appendChild(load_text);
+                load_text.innerHTML = '正在解译' + (k + 1).toString() + '/' + n_file.length.toString();
+
+                let xhr = new XMLHttpRequest();
+                xhr.open('POST', url, true);
+                let formData = new FormData();
+                formData.append('status', 'multi');
+                formData.append('image', file[k]);
+                formData.append('no', k);
+                if (k === n_file.length - 1) {
+                    formData.append('is_end', 'yes');
+                } else {
+                    formData.append('is_end', 'no');
+                }
+                xhr.send(formData);
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                        load_logo.remove();
+                        load_text.remove();
+                        pic[k].style.color = 'var(--main-marrsGreen)';
+                        pic[k].style.background = 'var(--main-white-shadow)';
+                        pic[k].innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" ' +
+                            'stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" ' +
+                            'stroke-linejoin="round">\n' +
+                            '   <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>\n' +
+                            '   <path d="M5 12l5 5l10 -10"></path>\n' +
+                            '</svg>';
+                        if (k < n_file.length - 1) {
+                            multi_pro(k + 1);
+                        } else {
+                            const load_text = document.createElement('div');
+                            load_text.className = 'multi_loading_text';
+                            multi_loading.appendChild(load_text);
+                            load_text.innerHTML = '解译完成全部' + n_file.length.toString() + '张影像！';
+                            window.location.href = xhr.responseURL;
+                        }
+                    }
+                }
+            }
+
+            let n_file = [];
+            const pic = document.getElementsByClassName('multi_pic');
+            const multi_loading = document.getElementById('multi_loading');
+            multi_go.onclick = function () {
+                for (let k = 0; k < file.length; k++) {
+                    if (!(deleted.includes(k))) {
+                        n_file.push(file[k])
+                    }
+                }
+
+                multi_go.classList.remove('show');
+                multi_loading.classList.add('show');
+                flag = false;
+                multi_pro(0);
+            }
+        });
+
+        input_bt1.addEventListener('change', function () {
+            let file_path = input_bt1.value;
+            let pos = file_path.lastIndexOf("\\");
+            let filename = file_path.substring(pos + 1);
+            let ext_name = filename.substring(filename.lastIndexOf("."), filename.length);
+            let support_ext = ['.png', '.jpg', 'jpeg']
+            if (support_ext.indexOf(ext_name) === -1) {
+                warning.innerHTML = '错误！上传图片格式有误，支持影像拓展名 .png .jpg .jpeg';
+            } else {
+                warning.innerHTML = '';
+                img_prev.classList.add('show');
+                input3.classList.remove('show');
+
+                let file = input_bt1.files[0];
+                let reader = new FileReader();
+                reader.onload = function (e) {
+                    data1 = e.target.result;
+                    let img = new Image();
+                    img.src = data1;
+                    img.onload = function () {
+                        let h = img.height;
+                        let w = img.width;
+                        warning.innerHTML = '分辨率为 ' + h.toString() + ' × ' + w.toString();
+                        if (h > 1200 || w > 1200) {
+                            warning.innerHTML += '影像较大，耗时可能较长...';
+                        }
+                    }
+
+                    img_prev.style.backgroundImage = 'url(' + data1 + ')';
+                    img_prev.style.backgroundSize = '70%';
+                    img_prev.style.backgroundPosition = '0 50%';
+                    img_prev.style.backgroundRepeat = 'no-repeat';
+                };
+                reader.readAsDataURL(file);
+
+                main_title.classList.add('move');
+                main_subtitle.classList.add('move');
+                r_pro.classList.add('move');
+
+                img_ready[0] = 1;
+                input1.classList.remove('hover');
+                input1.classList.add('ready');
+                input1.innerHTML = '<svg width="90" height="90" viewBox="-14 -1 50 50" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">\n' +
+                    '   <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>\n' +
+                    '   <path d="M5 12l5 5l10 -10"></path>\n' +
+                    '</svg>';
+
+                start_bt.classList.add('show_n');
+                start_bt.onmouseover = function () {
+                    start_bt.classList.add('hover_n');
+                    start_bt.innerHTML = '开始处理';
+                }
+                start_bt.onmouseout = function () {
+                    start_bt.classList.remove('hover_n');
+                    start_bt.innerHTML = '  <svg width="60" height="60"\n' +
+                        '             viewBox="-8.5 -8 50 50" stroke-width="2" stroke="currentColor" stroke-linecap="round"\n' +
+                        '             stroke-linejoin="round">\n' +
+                        '            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>\n' +
+                        '            <path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75"></path>\n' +
+                        '        </svg>';
+                }
+
+                start_bt.onclick = function () {
+                    load_bg.classList.add('show');
+                    container.classList.add('show');
+                    loading_text.classList.add('show');
+                    if (method === 0) {
+                        loading_time.innerHTML = '预计用时1~2min';
+                        loading_time.classList.add('show');
+                    }
+
+                    let xhr = new XMLHttpRequest();
+                    xhr.open('POST', url, true);
+                    let formData = new FormData();
+                    formData.append('status', 'upload');
+                    formData.append('image', input_bt1.files[0]);
+                    xhr.send(formData);
+                    xhr.onreadystatechange = function () {
+                        if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                            loading_text.innerHTML = '解译完毕';
+                            window.location.href = xhr.responseURL;
+                        }
+                    }
+                }
+            }
+        })
+    }
+</script>
+</body>
+</html>

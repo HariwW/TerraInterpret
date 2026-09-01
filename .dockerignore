@@ -1,0 +1,8 @@
+.git
+.venv
+artifacts
+webpage/res
+__pycache__
+*.pyc
+PaddleRS.zip
+imgs
