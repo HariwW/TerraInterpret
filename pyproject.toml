@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "i2rsi"
-version = "2.1.0"
+version = "2.3.0"
 description = "Research-grade GeoAI workbench for reproducible remote-sensing interpretation"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -30,6 +30,15 @@ geo = [
   "rasterio>=1.4,<2.0",
   "shapely>=2.1,<3.0",
 ]
+agent = [
+  "GeoAgent>=1.9,<2.0",
+]
+agent-openai = [
+  "GeoAgent[openai]>=1.9,<2.0",
+]
+agent-ollama = [
+  "GeoAgent[ollama]>=1.9,<2.0",
+]
 
 [project.scripts]
 i2rsi = "i2rsi.cli:main"
@@ -40,6 +49,11 @@ packages = ["i2rsi"]
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers"
 testpaths = ["tests"]
+
+[tool.coverage.run]
+# The optional PyTorch worker is exercised in the isolated model environment.
+# The base CI suite cannot import its OpenMMLab/Ultralytics dependencies.
+omit = ["i2rsi/model_worker.py"]
 
 [tool.ruff]
 target-version = "py311"

@@ -103,16 +103,14 @@ class GeoAdaptService:
                 if not isinstance(properties, dict) or not isinstance(geometry, dict):
                     continue
                 feature_id = str(raw_feature.get("id", index))
-                candidate_id = hashlib.sha256(
-                    f"{manifest.id}:{feature_id}".encode()
-                ).hexdigest()[:24]
+                candidate_id = hashlib.sha256(f"{manifest.id}:{feature_id}".encode()).hexdigest()[
+                    :24
+                ]
                 if candidate_id in self._candidates:
                     continue
                 proxy_score = self._normalise_score(properties.get("score_proxy", 0.5))
                 suggested_label = str(properties.get("label", "candidate"))[:80]
-                uncertainty = self._uncertainty(
-                    manifest.task, manifest.model_id, proxy_score
-                )
+                uncertainty = self._uncertainty(manifest.task, manifest.model_id, proxy_score)
                 candidate = ReviewCandidate(
                     id=candidate_id,
                     job_id=manifest.id,
@@ -308,12 +306,10 @@ class GeoAdaptService:
     def state(self) -> GeoAdaptState:
         with self._lock:
             pending = sum(
-                candidate.status is ReviewStatus.PENDING
-                for candidate in self._candidates.values()
+                candidate.status is ReviewStatus.PENDING for candidate in self._candidates.values()
             )
             calibrators = {
-                f"{item.task.value}:{item.model_id}": item.id
-                for item in self._latest_rounds()
+                f"{item.task.value}:{item.model_id}": item.id for item in self._latest_rounds()
             }
             return GeoAdaptState(
                 review_candidates=len(self._candidates),
@@ -332,9 +328,7 @@ class GeoAdaptService:
                 },
             )
 
-    def _rank_candidates(
-        self, candidates: Sequence[ReviewCandidate]
-    ) -> list[ReviewCandidate]:
+    def _rank_candidates(self, candidates: Sequence[ReviewCandidate]) -> list[ReviewCandidate]:
         remaining = list(candidates)
         selected: list[ReviewCandidate] = []
         descriptors: dict[str, np.ndarray] = {
@@ -348,9 +342,7 @@ class GeoAdaptService:
                 else:
                     diversity = min(
                         float(
-                            np.linalg.norm(
-                                descriptors[candidate.id] - descriptors[item.id]
-                            )
+                            np.linalg.norm(descriptors[candidate.id] - descriptors[item.id])
                             / math.sqrt(5.0)
                         )
                         for item in selected
@@ -360,9 +352,7 @@ class GeoAdaptService:
                 scored.append((acquisition, candidate.id, diversity, candidate))
             _, _, diversity, chosen = max(scored, key=lambda item: (item[0], item[1]))
             chosen.diversity_score = round(diversity, 6)
-            chosen.acquisition_score = round(
-                0.72 * chosen.uncertainty_score + 0.28 * diversity, 6
-            )
+            chosen.acquisition_score = round(0.72 * chosen.uncertainty_score + 0.28 * diversity, 6)
             selected.append(chosen)
             remaining.remove(chosen)
         return selected
@@ -406,11 +396,7 @@ class GeoAdaptService:
                 candidate.updated_at = datetime.now(UTC)
 
     def _latest_round(self, task: TaskType, model_id: str) -> AdaptationRound | None:
-        matches = [
-            item
-            for item in self._rounds
-            if item.task is task and item.model_id == model_id
-        ]
+        matches = [item for item in self._rounds if item.task is task and item.model_id == model_id]
         return max(matches, key=lambda item: (item.created_at, item.id), default=None)
 
     def _latest_rounds(self) -> list[AdaptationRound]:
@@ -433,9 +419,7 @@ class GeoAdaptService:
             default=None,
         )
 
-    def _latest_events_for_model(
-        self, task: TaskType, model_id: str
-    ) -> list[AnnotationEvent]:
+    def _latest_events_for_model(self, task: TaskType, model_id: str) -> list[AnnotationEvent]:
         latest: dict[str, AnnotationEvent] = {}
         for event in self._events:
             candidate = self._candidates.get(event.candidate_id)
@@ -516,9 +500,7 @@ class GeoAdaptService:
             candidate.model_dump(mode="json")
             for candidate in sorted(self._candidates.values(), key=lambda item: item.id)
         ]
-        temporary.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         temporary.replace(target)
 
     def _load(self) -> None:
@@ -538,9 +520,7 @@ class GeoAdaptService:
             self._events.append(event)
         for path in sorted(self.rounds_root.glob("*.json")):
             try:
-                round_result = AdaptationRound.model_validate_json(
-                    path.read_text(encoding="utf-8")
-                )
+                round_result = AdaptationRound.model_validate_json(path.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
             self._rounds.append(round_result)

@@ -81,6 +81,8 @@ def settings(tmp_path: Path, sample_images: dict[str, bytes]) -> Settings:
         static_root=static_root,
         demo_archive=demo_archive,
         max_upload_bytes=64 * 1024,
+        max_dataset_bytes=128 * 1024,
+        max_dataset_files=8,
         max_image_edge=128,
         job_retention=20,
     )

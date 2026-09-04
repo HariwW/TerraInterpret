@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import zipfile
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -10,6 +12,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx import Response
 from PIL import Image
+
+from i2rsi.service import JobService
+from i2rsi.settings import Settings
 
 ACCURACY_METRIC = re.compile(
     r"(^|_)(accuracy|iou|miou|f1|precision|recall|map|auc|kappa)($|_)",
@@ -23,15 +28,40 @@ def _assert_no_unlabelled_accuracy_claim(metrics: dict[str, object]) -> None:
         assert ACCURACY_METRIC.search(normalised) is None, key
 
 
+def test_demo_archive_accepts_top_level_data_demo_directory(
+    settings: Settings,
+    sample_images: dict[str, bytes],
+    tmp_path: Path,
+) -> None:
+    archive_path = tmp_path / "prefixed-demo.zip"
+    with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("data_demo/CD/test_1_A.png", sample_images["before"])
+        archive.writestr("data_demo/CD/test_1_B.png", sample_images["after"])
+
+    service = JobService(replace(settings, demo_archive=archive_path))
+    before, name = service.read_demo_asset("cd-before")
+
+    assert before == sample_images["before"]
+    assert name == "test_1_A.png"
+
+
 @pytest.mark.parametrize(
-    ("scenario_id", "task", "model_id", "expected_input_count", "expected_artifacts"),
+    (
+        "scenario_id",
+        "task",
+        "model_id",
+        "expected_input_count",
+        "expected_artifacts",
+        "expected_parameters",
+    ),
     [
         (
             "urban-change",
             "change_detection",
-            "geochange-lite-v2",
+            "geochange-robust-v3",
             2,
             {"original", "secondary", "overlay", "mask", "uncertainty", "features"},
+            {"threshold": 0.731},
         ),
         (
             "land-cover-mapping",
@@ -39,6 +69,7 @@ def _assert_no_unlabelled_accuracy_claim(metrics: dict[str, object]) -> None:
             "landcover-lite-v2",
             1,
             {"original", "overlay", "mask", "uncertainty", "features"},
+            {},
         ),
         (
             "aircraft-proposals",
@@ -46,6 +77,7 @@ def _assert_no_unlabelled_accuracy_claim(metrics: dict[str, object]) -> None:
             "geodetect-lite-v2",
             1,
             {"original", "overlay", "mask", "uncertainty", "features"},
+            {},
         ),
         (
             "road-network",
@@ -53,6 +85,7 @@ def _assert_no_unlabelled_accuracy_claim(metrics: dict[str, object]) -> None:
             "roadgraph-lite-v2",
             1,
             {"original", "overlay", "mask", "uncertainty", "features"},
+            {"threshold": 0.731},
         ),
     ],
 )
@@ -64,6 +97,7 @@ def test_demo_run_produces_auditable_artifacts(
     model_id: str,
     expected_input_count: int,
     expected_artifacts: set[str],
+    expected_parameters: dict[str, float],
 ) -> None:
     creation = client.post(f"/api/v1/demo-runs/{scenario_id}?threshold=0.731")
 
@@ -76,7 +110,7 @@ def test_demo_run_produces_auditable_artifacts(
     assert manifest["status"] == "succeeded", manifest.get("error")
     assert manifest["task"] == task
     assert manifest["model_id"] == model_id
-    assert manifest["parameters"] == {"threshold": 0.731}
+    assert manifest["parameters"] == expected_parameters
     assert len(manifest["inputs"]) == expected_input_count
     assert all(item["source"] == f"bundled-demo:{scenario_id}" for item in manifest["inputs"])
     assert all(len(item["sha256"]) == 64 for item in manifest["inputs"])
@@ -98,16 +132,22 @@ def test_demo_run_produces_auditable_artifacts(
     assert isinstance(feature_collection["features"], list)
 
     assert len(manifest["histogram"]) == 10
-    assert sum(manifest["histogram"]) == manifest["metrics"]["width_px"] * manifest["metrics"][
-        "height_px"
-    ]
+    assert (
+        sum(manifest["histogram"])
+        == manifest["metrics"]["width_px"] * manifest["metrics"]["height_px"]
+    )
     assert manifest["legend"]
     assert manifest["summary"]
     _assert_no_unlabelled_accuracy_claim(manifest["metrics"])
 
     provenance = manifest["provenance"]
-    assert provenance["engine"] == "transparent-cpu-baselines"
-    assert provenance["engine_version"] == "2.0.0"
+    if model_id == "geochange-robust-v3":
+        assert provenance["engine"] == "robust-change-cpu"
+        assert provenance["engine_version"] == "3.0.0"
+        assert provenance["backend"] == "builtin-robust-change"
+    else:
+        assert provenance["engine"] == "transparent-cpu-baselines"
+        assert provenance["engine_version"] == "2.0.0"
     assert provenance["model_id"] == model_id
     assert provenance["task"] == task
     assert provenance["parameters"] == manifest["parameters"]
@@ -118,6 +158,28 @@ def test_demo_run_produces_auditable_artifacts(
     manifest_path = app.state.settings.artifact_root / "jobs" / job_id / "manifest.json"
     persisted = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert persisted == manifest
+
+
+def test_demo_bootstrap_builds_and_reuses_one_job_per_task(client: TestClient) -> None:
+    first = client.post("/api/v1/demo-runs/bootstrap")
+
+    assert first.status_code == 200
+    created = first.json()
+    assert len(created) == 4
+    assert {item["task"] for item in created} == {
+        "change_detection",
+        "land_cover",
+        "object_detection",
+        "road_extraction",
+    }
+    completed = [client.get(f"/api/v1/jobs/{item['id']}").json() for item in created]
+    assert all(item["status"] == "succeeded" for item in completed)
+
+    second = client.post("/api/v1/demo-runs/bootstrap")
+
+    assert second.status_code == 200
+    assert [item["id"] for item in second.json()] == [item["id"] for item in completed]
+    assert len(client.get("/api/v1/jobs?limit=100").json()) == 4
 
 
 def test_geojson_download_uses_manifest_media_type(client: TestClient) -> None:
@@ -225,9 +287,10 @@ def test_jobs_are_isolated_and_upload_names_are_sanitised(
     second_prefix = f"/artifacts/jobs/{second_manifest['id']}/outputs/"
     assert all(item["url"].startswith(first_prefix) for item in first_manifest["artifacts"])
     assert all(item["url"].startswith(second_prefix) for item in second_manifest["artifacts"])
-    assert not ({item["url"] for item in first_manifest["artifacts"]} & {
-        item["url"] for item in second_manifest["artifacts"]
-    })
+    assert not (
+        {item["url"] for item in first_manifest["artifacts"]}
+        & {item["url"] for item in second_manifest["artifacts"]}
+    )
 
     jobs_root = app.state.settings.artifact_root / "jobs"
     assert {path.name for path in jobs_root.iterdir()} == {
@@ -239,9 +302,9 @@ def test_jobs_are_isolated_and_upload_names_are_sanitised(
         assert (job_root / "inputs" / "primary.image").is_file()
         assert (job_root / "outputs" / "original.png").is_file()
         assert not (job_root / "inputs" / manifest["inputs"][0]["name"]).exists()
-        assert client.get(
-            f"/artifacts/jobs/{manifest['id']}/inputs/primary.image"
-        ).status_code == 404
+        assert (
+            client.get(f"/artifacts/jobs/{manifest['id']}/inputs/primary.image").status_code == 404
+        )
 
     first_original_url = next(
         item["url"] for item in first_manifest["artifacts"] if item["kind"] == "original"

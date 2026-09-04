@@ -4,21 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#10192c">
-  <meta name="description" content="I2RSI V2 — 可复现、可信赖的遥感智能解译研究工作台">
-  <title>I2RSI · GeoAI Research Workbench</title>
-  <link rel="stylesheet" href="/static/app.css?v=2.1.0">
+  <meta name="description" content="TerraInterpret — 可复现、可信赖的遥感智能解译研究工作台">
+  <title>TerraInterpret · GeoAI Research Workbench</title>
+  <link rel="stylesheet" href="/static/app.css?v=2.3.0">
   <link rel="manifest" href="/static/manifest.webmanifest">
-  <script type="module" src="/static/app.js?v=2.1.0"></script>
+  <script type="module" src="/static/app.js?v=2.3.0"></script>
 </head>
 <body>
   <a class="skip-link" href="#workspace">跳到工作台</a>
   <div class="app-shell">
     <aside class="rail" aria-label="主导航">
-      <a class="brand" href="/" aria-label="I2RSI 首页">
+      <a class="brand" href="/" aria-label="TerraInterpret 首页">
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 40 40" role="img"><path d="M7 13.5 20 6l13 7.5v13L20 34 7 26.5z"/><path d="m13 17 7-4 7 4v7l-7 4-7-4z"/></svg>
         </span>
-        <span class="brand-copy"><strong>I2RSI</strong><small>Interpret Lab</small></span>
+        <span class="brand-copy"><strong>TERRA</strong><small>Interpret</small></span>
       </a>
 
       <nav class="primary-nav">
@@ -33,6 +33,10 @@
         <button class="nav-item" type="button" data-nav="jobs">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>
           <span>作业</span>
+        </button>
+        <button class="nav-item" type="button" data-nav="workflows">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><path d="M7 5h4a3 3 0 0 1 3 3v1a3 3 0 0 0 3 3M7 19h4a3 3 0 0 0 3-3v-1a3 3 0 0 1 3-3"/></svg>
+          <span>编排</span>
         </button>
         <button class="nav-item" type="button" data-nav="models">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9"/></svg>
@@ -55,8 +59,8 @@
     <main id="workspace" class="workspace">
       <header class="topbar">
         <div>
-          <div class="eyebrow">GeoAI Research Workbench</div>
-          <h1>遥感智能解译实验台</h1>
+          <div class="eyebrow" id="workspaceEyebrow">GeoAI Research Workbench</div>
+          <h1 id="workspaceTitle">遥感智能解译实验台</h1>
         </div>
         <div class="topbar-actions">
           <div class="system-health" id="systemHealth" role="status" aria-live="polite">
@@ -66,6 +70,10 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6zM14 3v4h4M9 12h6M9 16h6"/></svg>
             API 文档
           </button>
+          <button class="button button-agent" type="button" id="openAgentButton">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9h8M8 13h5M7 3h10a4 4 0 0 1 4 4v7a4 4 0 0 1-4 4h-5l-5 3v-3a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4Z"/></svg>
+            GeoAgent
+          </button>
           <button class="button button-primary" type="button" id="newExperimentButton">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
             新建实验
@@ -73,6 +81,7 @@
         </div>
       </header>
 
+      <section class="module-view" id="workbenchModule" data-module="workbench">
       <section class="context-strip" aria-labelledby="caseTitle">
         <div class="case-heading">
           <span class="case-index">CASE 01</span>
@@ -87,13 +96,14 @@
           <span><strong>任务</strong><span id="taskContext">Change detection</span></span>
         </div>
         <div class="context-actions">
-          <label class="threshold-control" for="thresholdInput">
-            <span>阈值 <output id="thresholdOutput">0.62</output></span>
+          <label class="threshold-control" id="thresholdControl" for="thresholdInput">
+            <span><span id="thresholdLabel">变化筛选强度</span><output id="thresholdOutput">0.62</output></span>
             <input id="thresholdInput" type="range" min="0.15" max="0.90" step="0.01" value="0.62">
+            <small id="thresholdHelp">越高越保守</small>
           </label>
           <button class="button button-run" type="button" id="runButton">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 9 6-9 6z"/></svg>
-            运行示例
+            <span id="runButtonLabel">运行示例</span>
           </button>
         </div>
       </section>
@@ -152,17 +162,17 @@
             <div class="stage-loader" id="stageLoader" role="status">
               <span class="orbit" aria-hidden="true"></span>
               <strong>正在构建可复现实验</strong>
-              <small>校验输入并运行透明基线</small>
+              <small>校验输入并路由已注册模型</small>
             </div>
             <div class="empty-state" id="emptyState" hidden>
-              <strong>尚无解译结果</strong><span>选择一个研究场景并运行实验</span>
+              <strong>当前场景尚未运行</strong><span>点击“运行示例”开始解译</span>
             </div>
           </div>
 
           <div class="viewer-footer">
             <div class="timeline" aria-label="实验阶段">
               <span class="is-complete"><i>1</i>输入校验</span>
-              <span id="timelineRun"><i>2</i>基线推理</span>
+              <span id="timelineRun"><i>2</i>模型推理</span>
               <span id="timelineArtifacts"><i>3</i>产物登记</span>
               <span id="timelineReview"><i>4</i>人工复核</span>
             </div>
@@ -264,6 +274,177 @@
           <div class="recent-list" id="recentList"><p class="muted">暂无历史运行</p></div>
         </article>
       </section>
+      </section>
+
+      <section class="module-view" id="dataModule" data-module="data" hidden>
+        <div class="module-heading">
+          <div>
+            <span class="section-kicker">VERSIONED INPUTS</span>
+            <h2>数据目录</h2>
+            <p>登记本地影像、固定内容哈希与像素尺寸，再从确定的数据版本发起解译。</p>
+          </div>
+          <span class="status-pill status-ready">本地持久化</span>
+        </div>
+        <div class="summary-grid" id="dataSummary" aria-live="polite">
+          <article class="panel"><span>已登记数据集</span><strong>—</strong><small>版本化记录</small></article>
+          <article class="panel"><span>影像资产</span><strong>—</strong><small>SHA-256 校验</small></article>
+          <article class="panel"><span>本地占用</span><strong>—</strong><small>项目 artifact 目录</small></article>
+          <article class="panel"><span>内置场景</span><strong>—</strong><small>只读演示数据</small></article>
+        </div>
+        <div class="module-grid data-module-grid">
+          <form class="panel catalog-form" id="datasetForm">
+            <div class="panel-heading compact">
+              <div><span class="section-kicker">REGISTER</span><h2>登记数据版本</h2></div>
+            </div>
+            <label>数据集名称<input name="name" maxlength="120" placeholder="例如：WHU 城市变化样本" required></label>
+            <label>用途说明<textarea name="description" maxlength="500" rows="3" placeholder="区域、时相、传感器或许可说明"></textarea></label>
+            <label>任务提示
+              <select name="task_hint">
+                <option value="">未指定</option>
+                <option value="change_detection">变化检测</option>
+                <option value="land_cover">地表覆盖</option>
+                <option value="object_detection">旋转框目标检测</option>
+                <option value="road_extraction">道路提取</option>
+              </select>
+            </label>
+            <label>数据形式
+              <select id="datasetUploadMode">
+                <option value="scene">单景 / 双时相影像</option>
+                <option value="folder">影像文件夹</option>
+              </select>
+            </label>
+            <div class="dataset-input-group" id="datasetSceneInputs">
+              <label>主影像 / 前时相<input name="primary" type="file" accept="image/png,image/jpeg" required></label>
+              <label>后时相影像（可选）<input name="secondary" type="file" accept="image/png,image/jpeg"></label>
+            </div>
+            <div class="dataset-input-group" id="datasetFolderInputs" hidden>
+              <label>数据集文件夹<input id="datasetFolder" type="file" accept="image/png,image/jpeg" webkitdirectory directory multiple></label>
+              <small id="datasetFolderSummary" aria-live="polite">请选择包含 PNG / JPEG 影像的文件夹。</small>
+            </div>
+            <button class="button button-primary" id="registerDataset" type="submit">校验并登记</button>
+            <small>目录上传会保留相对路径并为每张影像计算 SHA-256；当前数据明确标记为 Pixel CRS，不推断缺失的 CRS、GSD 或传感器信息。</small>
+          </form>
+          <section class="panel catalog-panel" aria-labelledby="datasetCatalogHeading">
+            <div class="panel-heading compact">
+              <div><span class="section-kicker">CATALOG</span><h2 id="datasetCatalogHeading">数据版本</h2></div>
+              <button class="text-button" id="refreshDatasets" type="button">刷新</button>
+            </div>
+            <div class="catalog-list" id="datasetCatalog"><p class="muted">暂无已登记数据集</p></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="module-view" id="jobsModule" data-module="jobs" hidden>
+        <div class="module-heading">
+          <div>
+            <span class="section-kicker">RUN LEDGER</span>
+            <h2>作业中心</h2>
+            <p>每次运行隔离输入与产物，并记录参数、模型、输入哈希和执行状态。</p>
+          </div>
+          <button class="button button-primary" type="button" id="jobsNewExperiment">新建作业</button>
+        </div>
+        <section class="panel catalog-panel full-panel">
+          <div class="filter-row">
+            <label>状态<select id="jobStatusFilter"><option value="">全部</option><option value="queued">等待调度</option><option value="running">正在运行</option><option value="succeeded">运行成功</option><option value="failed">运行失败</option></select></label>
+            <label>任务<select id="jobTaskFilter"><option value="">全部</option><option value="change_detection">变化检测</option><option value="land_cover">地表覆盖</option><option value="object_detection">旋转框目标检测</option><option value="road_extraction">道路提取</option></select></label>
+            <label>模型<select id="jobModelFilter"><option value="">全部模型</option></select></label>
+            <button class="button button-quiet" id="refreshJobCatalog" type="button">刷新</button>
+          </div>
+          <div class="table-scroll">
+            <table class="run-table">
+              <thead><tr><th>RUN ID</th><th>任务 / 模型</th><th>来源</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+              <tbody id="jobCatalog"><tr><td colspan="6" class="muted">暂无运行记录</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="module-view" id="modelsModule" data-module="models" hidden>
+        <div class="module-heading">
+          <div>
+            <span class="section-kicker">MODEL REGISTRY</span>
+            <h2>模型注册表</h2>
+            <p>用模型卡公开适用任务、输入约束、优势、局限和指标声明边界。</p>
+          </div>
+          <span class="status-pill status-running" id="modelCountBadge">0 models</span>
+        </div>
+        <div class="model-catalog" id="modelCatalog"></div>
+      </section>
+
+      <section class="module-view" id="workflowsModule" data-module="workflows" hidden>
+        <div class="module-heading">
+          <div>
+            <span class="section-kicker">AUDITABLE ORCHESTRATION</span>
+            <h2>流程编排中心</h2>
+            <p>基于固定数据版本运行一个或多个可用模型，记录步骤状态，并在同一真值上生成可比较评测。</p>
+          </div>
+          <span class="status-pill status-ready" id="workflowCountBadge">0 workflows</span>
+        </div>
+        <div class="module-grid data-module-grid">
+          <form class="panel catalog-form" id="workflowForm">
+            <div class="panel-heading compact">
+              <div><span class="section-kicker">NEW WORKFLOW</span><h2>创建编排计划</h2></div>
+            </div>
+            <label>计划名称<input id="workflowName" maxlength="120" value="多模型遥感解译" required></label>
+            <label>数据版本<select id="workflowDataset" required><option value="">请先登记数据集</option></select></label>
+            <label>任务<select id="workflowTask" required>
+              <option value="change_detection">变化检测</option>
+              <option value="land_cover">地表覆盖</option>
+              <option value="object_detection">旋转框目标检测</option>
+              <option value="road_extraction">道路提取</option>
+            </select></label>
+            <label>模型（可多选）<select id="workflowModels" multiple size="5"></select></label>
+            <small>不选择模型时，自动运行该任务下所有已就绪模型；不可用模型不会进入计划。</small>
+            <div class="model-parameter-list" id="workflowParameters" aria-live="polite">
+              <small>选择模型后显示各模型独立参数。</small>
+            </div>
+            <button class="button button-primary" id="runWorkflow" type="submit">创建并执行</button>
+            <div class="claim-note compact-note"><p><strong>审批边界</strong><span>页面点击或 Agent 的 allow_actions 只批准启动推理；二值精度必须再次上传真实标注。</span></p></div>
+          </form>
+          <section class="panel catalog-panel" aria-labelledby="workflowListHeading">
+            <div class="panel-heading compact">
+              <div><span class="section-kicker">LEDGER</span><h2 id="workflowListHeading">编排记录</h2></div>
+              <button class="text-button" id="refreshWorkflows" type="button">刷新</button>
+            </div>
+            <div class="catalog-list workflow-list" id="workflowCatalog"><p class="muted">暂无编排记录</p></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="module-view" id="evaluationModule" data-module="evaluation" hidden>
+        <div class="module-heading">
+          <div>
+            <span class="section-kicker">GROUND-TRUTH EVALUATION</span>
+            <h2>评测中心</h2>
+            <p>仅对成功的二值分割作业上传真实标注，输出可追溯的 IoU、F1 与混淆矩阵。</p>
+          </div>
+          <span class="status-pill status-ready">binary-segmentation-v1</span>
+        </div>
+        <div class="module-grid evaluation-module-grid">
+          <form class="panel catalog-form" id="evaluationForm">
+            <div class="panel-heading compact">
+              <div><span class="section-kicker">NEW EVALUATION</span><h2>绑定真值</h2></div>
+            </div>
+            <label>成功作业<select id="evaluationJob" name="job_id" required><option value="">暂无可评测作业</option></select></label>
+            <label>真值掩膜<input name="ground_truth" type="file" accept="image/png,image/jpeg" required></label>
+            <label>正类阈值<input name="positive_threshold" type="number" min="1" max="254" value="127" required></label>
+            <button class="button button-primary" id="createEvaluation" type="submit">计算并保存</button>
+            <div class="claim-note compact-note"><p><strong>有效范围</strong><span>只支持变化检测与道路提取；真值尺寸必须与预测掩膜一致。地表覆盖和目标检测需要各自独立的标签规范与指标套件。</span></p></div>
+          </form>
+          <section class="panel catalog-panel" aria-labelledby="evaluationListHeading">
+            <div class="panel-heading compact">
+              <div><span class="section-kicker">REPORTS</span><h2 id="evaluationListHeading">评测报告</h2></div>
+              <button class="text-button" id="refreshEvaluations" type="button">刷新</button>
+            </div>
+            <div class="evaluation-list" id="evaluationList"><p class="muted">暂无评测报告</p></div>
+          </section>
+          <aside class="panel evaluation-detail" id="evaluationDetail">
+            <span class="section-kicker">SELECTED REPORT</span>
+            <h2>选择一份报告</h2>
+            <p class="muted">指标、混淆矩阵和内容哈希将在这里显示。</p>
+          </aside>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -275,13 +456,13 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
         </button>
       </div>
-      <p class="dialog-intro">上传数据仅保存在本地独立运行目录。RGB 图片将使用透明基线处理；真实论文评测需另配真值与地理元数据。</p>
+      <p class="dialog-intro">上传数据仅保存在本地独立运行目录。可选择透明基线或公开预训练模型；精度评测需另配真值与地理元数据。</p>
       <div class="form-grid">
         <label>任务类型
           <select id="taskSelect" name="task">
             <option value="change_detection">变化检测</option>
             <option value="land_cover">地表覆盖</option>
-            <option value="object_detection">目标候选</option>
+            <option value="object_detection">旋转框目标检测</option>
             <option value="road_extraction">道路提取</option>
           </select>
         </label>
@@ -301,8 +482,11 @@
           <input id="secondaryFile" name="secondary" type="file" accept="image/png,image/jpeg">
         </label>
       </div>
-      <label class="dialog-threshold">决策阈值 <output id="dialogThresholdOutput">0.62</output>
+      <label class="dialog-threshold" id="dialogThresholdControl">
+        <span id="dialogThresholdLabel">模型参数</span>
+        <output id="dialogThresholdOutput">0.62</output>
         <input id="dialogThreshold" name="threshold" type="range" min="0.15" max="0.90" step="0.01" value="0.62">
+        <small id="dialogThresholdHelp">按模型卡默认值运行</small>
       </label>
       <div class="dialog-actions">
         <button class="button button-quiet" type="button" id="cancelDialog">取消</button>
@@ -311,14 +495,64 @@
     </form>
   </dialog>
 
+  <dialog class="agent-dialog" id="agentDialog" aria-labelledby="agentTitle">
+    <div class="dialog-header">
+      <div>
+        <span class="section-kicker">GEOAGENT × TERRAINTERPRET</span>
+        <h2 id="agentTitle">遥感工作台 Copilot</h2>
+      </div>
+      <button class="icon-button" type="button" id="closeAgent" aria-label="关闭 GeoAgent">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="agent-status" id="agentStatus" role="status">
+      <i></i><span>正在检查 GeoAgent 环境</span>
+    </div>
+    <div class="agent-conversation-layout">
+      <aside class="agent-history" aria-label="历史对话">
+        <div class="agent-history-head">
+          <strong>历史对话</strong>
+          <button class="text-button" id="newAgentConversation" type="button">＋ 新对话</button>
+        </div>
+        <div class="agent-history-list" id="agentHistoryList">
+          <p class="muted">暂无历史对话</p>
+        </div>
+      </aside>
+      <div class="agent-conversation-main">
+        <div class="agent-thread-bar">
+          <strong id="agentConversationTitle">新对话</strong>
+          <span id="agentMemoryStatus">最近 16 条消息参与上下文</span>
+        </div>
+        <div class="agent-messages" id="agentMessages" aria-live="polite">
+          <article class="agent-message assistant">
+            <strong>TerraInterpret Copilot</strong>
+            <p>可以查询数据版本、模型卡、工作流、评测和复核候选。对话将保存在本地项目 artifact 目录。</p>
+          </article>
+        </div>
+        <form class="agent-form" id="agentForm">
+          <label for="agentInput">向工作台提问</label>
+          <textarea id="agentInput" rows="3" maxlength="4000" placeholder="例如：总结最近一次运行，并指出需要人工复核的地方" required></textarea>
+          <div class="agent-form-footer">
+            <label class="agent-action-toggle">
+              <input id="agentAllowActions" type="checkbox">
+              <span>允许本轮启动任务</span>
+            </label>
+            <button class="button button-primary" id="sendAgentMessage" type="submit">发送</button>
+          </div>
+          <small>安全模式：历史仅存储在本地；不会执行任意代码或访问任意文件。</small>
+        </form>
+      </div>
+    </div>
+  </dialog>
+
   <dialog class="about-dialog" id="aboutDialog" aria-labelledby="aboutTitle">
     <div class="dialog-header">
-      <div><span class="section-kicker">I2RSI V2</span><h2 id="aboutTitle">从竞赛原型到研究平台</h2></div>
+      <div><span class="section-kicker">TERRAINTERPRET V2.3</span><h2 id="aboutTitle">从竞赛原型到研究平台</h2></div>
       <button class="icon-button" type="button" id="closeAbout" aria-label="关闭">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
       </button>
     </div>
-    <p>V2 保留 2022 年四类解译任务，但重建任务隔离、可复现记录、模型声明边界与不确定性表达。当前轻量引擎是透明基线，下一阶段用于接入 GeoFM、跨区域泛化和人机协同研究。</p>
+    <p>V2 保留四类解译任务，并重建任务隔离、可复现记录、模型声明边界与不确定性表达。当前同时支持透明 CPU 基线、LoveDA 语义分割和 DOTA 旋转框检测；Open-CD 可通过兼容的 Linux worker 接入。</p>
     <a class="button button-primary" href="/docs" target="_blank" rel="noreferrer">浏览 OpenAPI</a>
   </dialog>
 

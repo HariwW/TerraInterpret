@@ -1,6 +1,6 @@
 {
-  "name": "I2RSI GeoAI Research Workbench",
-  "short_name": "I2RSI",
+  "name": "TerraInterpret GeoAI Research Workbench",
+  "short_name": "TerraInterpret",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0b1324",

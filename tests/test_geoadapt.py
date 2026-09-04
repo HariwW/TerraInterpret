@@ -13,15 +13,11 @@ def _create_object_review_queue(client: TestClient) -> tuple[dict[str, object], 
     assert creation.status_code == 200
     job = client.get(f"/api/v1/jobs/{creation.json()['id']}").json()
     assert job["status"] == "succeeded"
-    reviews = client.get(
-        f"/api/v1/geoadapt/reviews?job_id={job['id']}&limit=100"
-    ).json()
+    reviews = client.get(f"/api/v1/geoadapt/reviews?job_id={job['id']}&limit=100").json()
     return job, reviews
 
 
-def test_jobs_enter_uncertainty_diversity_review_queue(
-    client: TestClient, app: FastAPI
-) -> None:
+def test_jobs_enter_uncertainty_diversity_review_queue(client: TestClient, app: FastAPI) -> None:
     job, reviews = _create_object_review_queue(client)
 
     assert len(reviews) >= 4
@@ -91,9 +87,7 @@ def test_annotation_events_are_validated_append_only_and_versioned(
     assert first_path.is_file() and second_path.is_file()
     assert json.loads(first_path.read_text(encoding="utf-8"))["sha256"] == first["sha256"]
     assert json.loads(second_path.read_text(encoding="utf-8"))["sha256"] == second["sha256"]
-    assert client.get(f"/api/v1/geoadapt/reviews/{candidate['id']}").json()[
-        "status"
-    ] == "rejected"
+    assert client.get(f"/api/v1/geoadapt/reviews/{candidate['id']}").json()["status"] == "rejected"
 
 
 def test_review_feedback_fits_calibrator_and_survives_reload(
@@ -137,9 +131,7 @@ def test_review_feedback_fits_calibrator_and_survives_reload(
     assert len(round_result["annotation_sha256"]) == 64
     assert "not GeoFM" in round_result["claim_boundary"]
 
-    pending = client.get(
-        "/api/v1/geoadapt/reviews?task=object_detection&limit=100"
-    ).json()
+    pending = client.get("/api/v1/geoadapt/reviews?task=object_detection&limit=100").json()
     after = {item["id"]: item["uncertainty_score"] for item in pending}
     assert set(after) == set(before)
     assert any(after[candidate_id] != score for candidate_id, score in before.items())

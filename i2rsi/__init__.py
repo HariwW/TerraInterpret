@@ -1,3 +1,3 @@
-"""I2RSI V2: a reproducible GeoAI interpretation workbench."""
+"""TerraInterpret: a reproducible GeoAI interpretation workbench."""
 
-__version__ = "2.1.0"
+__version__ = "2.3.0"

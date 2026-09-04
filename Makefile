@@ -1,9 +1,12 @@
-.PHONY: setup dev test lint
+.PHONY: setup models-setup dev test lint
 
 setup:
 	python3 -m venv .venv
 	.venv/bin/python -m pip install --upgrade pip
 	.venv/bin/python -m pip install -e ".[dev]"
+
+models-setup:
+	./scripts/setup_models.sh
 
 dev:
 	.venv/bin/i2rsi --reload

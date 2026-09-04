@@ -12,10 +12,11 @@ from typing import Any
 from PIL import Image, UnidentifiedImageError
 
 from . import __version__
-from .engine import DemoInterpretationEngine, sha256_file
+from .engine import sha256_file
 from .geoadapt import GeoAdaptService
-from .models import Artifact, JobManifest, JobStatus, TaskType
-from .registry import DEMO_ASSETS, MODEL_BY_ID, SCENARIO_BY_ID
+from .model_runtime import ModelRuntimeManager
+from .models import Artifact, DemoScenario, JobManifest, JobStatus, TaskType
+from .registry import DEMO_ASSETS, DEMO_SCENARIOS, MODEL_BY_ID, SCENARIO_BY_ID
 from .settings import Settings
 
 
@@ -24,13 +25,11 @@ class JobNotFoundError(KeyError):
 
 
 class JobService:
-    def __init__(
-        self, settings: Settings, geoadapt: GeoAdaptService | None = None
-    ) -> None:
+    def __init__(self, settings: Settings, geoadapt: GeoAdaptService | None = None) -> None:
         self.settings = settings
         self.jobs_root = settings.artifact_root / "jobs"
         self.jobs_root.mkdir(parents=True, exist_ok=True)
-        self.engine = DemoInterpretationEngine(max_image_edge=settings.max_image_edge)
+        self.engine = ModelRuntimeManager(settings)
         self.geoadapt = geoadapt
         self._lock = threading.RLock()
         self._jobs: dict[str, JobManifest] = {}
@@ -45,7 +44,7 @@ class JobService:
         primary_name: str,
         secondary: bytes | None = None,
         secondary_name: str | None = None,
-        threshold: float = 0.62,
+        threshold: float | None = None,
         source: str = "upload",
     ) -> JobManifest:
         card = MODEL_BY_ID.get(model_id)
@@ -53,6 +52,20 @@ class JobService:
             raise ValueError(f"Unknown model: {model_id}")
         if card.task is not task:
             raise ValueError(f"Model {model_id} does not support task {task.value}")
+        self.engine.ensure_ready(model_id)
+        threshold_spec = next(
+            (item for item in card.inference_parameters if item.key == "threshold"),
+            None,
+        )
+        parameters: dict[str, float] = {}
+        if threshold_spec is not None:
+            resolved_threshold = threshold_spec.default if threshold is None else float(threshold)
+            if not threshold_spec.minimum <= resolved_threshold <= threshold_spec.maximum:
+                raise ValueError(
+                    f"{threshold_spec.label} must be between "
+                    f"{threshold_spec.minimum} and {threshold_spec.maximum}"
+                )
+            parameters["threshold"] = round(resolved_threshold, 3)
         if task is TaskType.CHANGE_DETECTION and not secondary:
             raise ValueError("Change detection requires two images")
         primary_meta = self._validate_payload(primary)
@@ -74,11 +87,7 @@ class JobService:
         input_dir.mkdir(parents=True, exist_ok=False)
         primary_path = input_dir / "primary.image"
         primary_path.write_bytes(primary)
-        inputs = [
-            self._input_record(
-                primary_path, primary_name, "primary", source, primary_meta
-            )
-        ]
+        inputs = [self._input_record(primary_path, primary_name, "primary", source, primary_meta)]
         if secondary is not None:
             secondary_path = input_dir / "secondary.image"
             secondary_path.write_bytes(secondary)
@@ -96,7 +105,7 @@ class JobService:
             job_id=job_id,
             task=task,
             model_id=model_id,
-            parameters={"threshold": round(float(threshold), 3)},
+            parameters=parameters,
             inputs=inputs,
         )
         with self._lock:
@@ -104,18 +113,19 @@ class JobService:
             self._persist(manifest)
         return manifest.model_copy(deep=True)
 
-    def create_demo_job(self, scenario_id: str, threshold: float = 0.62) -> JobManifest:
+    def create_demo_job(self, scenario_id: str, threshold: float | None = None) -> JobManifest:
         scenario = SCENARIO_BY_ID.get(scenario_id)
         if scenario is None:
             raise ValueError(f"Unknown demo scenario: {scenario_id}")
-        primary, primary_name = self._read_demo_asset(scenario.primary_asset)
+        model_id = self.engine.preferred_model_id(scenario.task)
+        primary, primary_name = self.read_demo_asset(scenario.primary_asset)
         secondary: bytes | None = None
         secondary_name: str | None = None
         if scenario.secondary_asset:
-            secondary, secondary_name = self._read_demo_asset(scenario.secondary_asset)
+            secondary, secondary_name = self.read_demo_asset(scenario.secondary_asset)
         return self.create_job(
             task=scenario.task,
-            model_id=scenario.model_id,
+            model_id=model_id,
             primary=primary,
             primary_name=primary_name,
             secondary=secondary,
@@ -123,6 +133,54 @@ class JobService:
             threshold=threshold,
             source=f"bundled-demo:{scenario_id}",
         )
+
+    def resolved_demo_scenarios(self) -> list[DemoScenario]:
+        statuses = self.engine.statuses()
+        return [
+            scenario.model_copy(
+                update={
+                    "model_id": self.engine.preferred_model_id(scenario.task, statuses)
+                }
+            )
+            for scenario in DEMO_SCENARIOS
+        ]
+
+    def ensure_demo_jobs(self) -> tuple[list[JobManifest], list[str]]:
+        """Return one reusable job per demo task and create any missing examples."""
+        selected: list[JobManifest] = []
+        created_job_ids: list[str] = []
+        with self._lock:
+            jobs = sorted(
+                self._jobs.values(),
+                key=lambda item: item.created_at,
+                reverse=True,
+            )
+            for scenario in DEMO_SCENARIOS:
+                source = f"bundled-demo:{scenario.id}"
+                desired_model_id = self.engine.preferred_model_id(scenario.task)
+                candidates = [
+                    job
+                    for job in jobs
+                    if job.model_id == desired_model_id
+                    and any(item.get("source") == source for item in job.inputs)
+                ]
+                reusable = next(
+                    (job for job in candidates if job.status is JobStatus.SUCCEEDED),
+                    None,
+                ) or next(
+                    (
+                        job
+                        for job in candidates
+                        if job.status in {JobStatus.QUEUED, JobStatus.RUNNING}
+                    ),
+                    None,
+                )
+                if reusable is None:
+                    reusable = self.create_demo_job(scenario.id)
+                    jobs.insert(0, reusable)
+                    created_job_ids.append(reusable.id)
+                selected.append(reusable.model_copy(deep=True))
+        return selected, created_job_ids
 
     def run_job(self, job_id: str) -> None:
         try:
@@ -135,10 +193,11 @@ class JobService:
             secondary_path = job_dir / "inputs" / "secondary.image"
             output = self.engine.run(
                 task=manifest.task,
+                model_id=manifest.model_id,
                 primary_path=primary_path,
                 secondary_path=secondary_path if secondary_path.exists() else None,
                 output_dir=job_dir / "outputs",
-                threshold=float(manifest.parameters["threshold"]),
+                threshold=float(manifest.parameters.get("threshold", 0.5)),
             )
             artifacts = []
             for kind, (path, label, media_type) in output.files.items():
@@ -158,15 +217,13 @@ class JobService:
             manifest.summary = output.summary
             manifest.provenance = {
                 "app_version": __version__,
-                "engine": self.engine.id,
-                "engine_version": self.engine.version,
+                **output.provenance,
                 "model_id": manifest.model_id,
                 "task": manifest.task.value,
                 "parameters": manifest.parameters,
                 "input_sha256": [item["sha256"] for item in manifest.inputs],
                 "coordinate_reference": "pixel coordinates; source images have no CRS metadata",
                 "random_seed": None,
-                "reproducibility": "deterministic CPU baseline",
                 "claim_boundary": (
                     "Descriptive run statistics only. Accuracy metrics require "
                     "labelled ground truth."
@@ -204,11 +261,23 @@ class JobService:
                 raise JobNotFoundError(job_id)
             return manifest.model_copy(deep=True)
 
-    def list_jobs(self, limit: int = 20) -> list[JobManifest]:
+    def list_jobs(
+        self,
+        limit: int = 20,
+        *,
+        status: JobStatus | None = None,
+        task: TaskType | None = None,
+        model_id: str | None = None,
+    ) -> list[JobManifest]:
         with self._lock:
-            manifests = sorted(
-                self._jobs.values(), key=lambda item: item.created_at, reverse=True
-            )[:limit]
+            manifests = list(self._jobs.values())
+            if status is not None:
+                manifests = [item for item in manifests if item.status is status]
+            if task is not None:
+                manifests = [item for item in manifests if item.task is task]
+            if model_id is not None:
+                manifests = [item for item in manifests if item.model_id == model_id]
+            manifests = sorted(manifests, key=lambda item: item.created_at, reverse=True)[:limit]
             return [item.model_copy(deep=True) for item in manifests]
 
     def _get_mutable(self, job_id: str) -> JobManifest:
@@ -259,15 +328,29 @@ class JobService:
             **image_meta,
         }
 
-    def _read_demo_asset(self, asset_id: str) -> tuple[bytes, str]:
+    def read_demo_asset(self, asset_id: str) -> tuple[bytes, str]:
+        """Read a registered demo asset from either supported ZIP layout."""
         try:
             archive_path, _ = DEMO_ASSETS[asset_id]
         except KeyError as exc:
             raise ValueError(f"Unknown demo asset: {asset_id}") from exc
         if not self.settings.demo_archive.exists():
             raise ValueError("Bundled demo archive is unavailable")
-        with zipfile.ZipFile(self.settings.demo_archive) as archive:
-            info = archive.getinfo(archive_path)
+        try:
+            archive = zipfile.ZipFile(self.settings.demo_archive)
+        except zipfile.BadZipFile as exc:
+            raise ValueError("Bundled demo archive is invalid") from exc
+        with archive:
+            info = next(
+                (
+                    archive.getinfo(candidate)
+                    for candidate in (archive_path, f"data_demo/{archive_path}")
+                    if candidate in archive.NameToInfo
+                ),
+                None,
+            )
+            if info is None:
+                raise ValueError(f"Bundled demo asset is missing: {archive_path}")
             if info.file_size > self.settings.max_upload_bytes:
                 raise ValueError("Bundled demo asset exceeds configured upload limit")
             return archive.read(info), Path(archive_path).name

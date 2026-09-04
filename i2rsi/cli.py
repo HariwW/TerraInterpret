@@ -7,7 +7,7 @@ import uvicorn
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the I2RSI V2 GeoAI workbench")
+    parser = argparse.ArgumentParser(description="Run the TerraInterpret GeoAI workbench")
     parser.add_argument("--host", default=os.environ.get("I2RSI_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("I2RSI_PORT", "8080")))
     parser.add_argument("--reload", action="store_true", help="Reload on source changes")

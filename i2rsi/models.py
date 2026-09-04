@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -19,6 +19,25 @@ class JobStatus(StrEnum):
     RUNNING = "running"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
+
+
+class WorkflowStatus(StrEnum):
+    PLANNED = "planned"
+    QUEUED = "queued"
+    RUNNING = "running"
+    AWAITING_GROUND_TRUTH = "awaiting_ground_truth"
+    SUCCEEDED = "succeeded"
+    PARTIALLY_SUCCEEDED = "partially_succeeded"
+    FAILED = "failed"
+
+
+class WorkflowStepStatus(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    BLOCKED = "blocked"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    SKIPPED = "skipped"
 
 
 class ReviewStatus(StrEnum):
@@ -42,6 +61,16 @@ class Artifact(BaseModel):
     sha256: str
 
 
+class InferenceParameterSpec(BaseModel):
+    key: str
+    label: str
+    description: str
+    default: float
+    minimum: float
+    maximum: float
+    step: float = 0.01
+
+
 class ModelCard(BaseModel):
     id: str
     name: str
@@ -55,6 +84,23 @@ class ModelCard(BaseModel):
     expected_inputs: list[str]
     reference_metrics: dict[str, float | str] = Field(default_factory=dict)
     metric_scope: str
+    backend: str = "lite"
+    runtime: str = "builtin"
+    weight_source: str | None = None
+    license: str = "Project source license"
+    recommended_device: str = "CPU"
+    inference_parameters: list[InferenceParameterSpec] = Field(default_factory=list)
+
+
+class ModelRuntimeStatus(BaseModel):
+    model_id: str
+    ready: bool
+    backend: str
+    runtime: str
+    device: str
+    weights_cached: bool = False
+    reason: str | None = None
+    setup_hint: str | None = None
 
 
 class JobManifest(BaseModel):
@@ -193,3 +239,160 @@ class GeoAdaptState(BaseModel):
     loop_complete: bool
     active_calibrators: dict[str, str]
     capabilities: dict[str, str]
+
+
+class AgentStatus(BaseModel):
+    enabled: bool
+    installed: bool
+    ready: bool
+    package_version: str | None = None
+    provider: str
+    model: str | None = None
+    safe_mode: str
+    setup_hint: str | None = None
+
+
+class AgentChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
+    conversation_id: str | None = Field(default=None, min_length=1, max_length=64)
+    current_job_id: str | None = Field(default=None, max_length=64)
+    allow_actions: bool = False
+
+
+class AgentChatResponse(BaseModel):
+    conversation_id: str
+    answer: str
+    executed_tools: list[str]
+    cancelled_tools: list[str]
+    action_mode: bool
+
+
+class AgentMessageRole(StrEnum):
+    USER = "user"
+    ASSISTANT = "assistant"
+
+
+class AgentMessage(BaseModel):
+    id: str
+    role: AgentMessageRole
+    content: str
+    created_at: datetime
+    executed_tools: list[str] = Field(default_factory=list)
+    cancelled_tools: list[str] = Field(default_factory=list)
+    allow_actions: bool = False
+
+
+class AgentConversation(BaseModel):
+    id: str
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    archived: bool = False
+    messages: list[AgentMessage] = Field(default_factory=list)
+
+
+class AgentConversationSummary(BaseModel):
+    id: str
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    archived: bool
+    message_count: int
+    preview: str = ""
+
+
+class AgentConversationCreateRequest(BaseModel):
+    title: str = Field(default="新对话", min_length=1, max_length=80)
+
+
+class AgentConversationUpdateRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=80)
+    archived: bool | None = None
+
+
+class DataAssetRecord(BaseModel):
+    role: str
+    name: str
+    relative_path: str | None = None
+    media_type: str
+    bytes: int
+    sha256: str
+    width_px: int
+    height_px: int
+
+
+class DatasetRecord(BaseModel):
+    id: str
+    version: str
+    name: str
+    description: str = ""
+    task_hint: TaskType | None = None
+    coordinate_space: str
+    source: str
+    layout: Literal["single", "paired", "folder"] = "single"
+    sample_count: int = Field(default=1, ge=1)
+    assets: list[DataAssetRecord]
+    created_at: datetime
+
+
+class DatasetRunRequest(BaseModel):
+    task: TaskType
+    model_id: str = Field(min_length=1, max_length=120)
+    threshold: float | None = Field(default=None, ge=0.05, le=0.95)
+
+
+class EvaluationReport(BaseModel):
+    id: str
+    job_id: str
+    task: TaskType
+    model_id: str
+    metric_suite: str
+    ground_truth_name: str
+    ground_truth_sha256: str
+    prediction_sha256: str
+    positive_threshold: int
+    metrics: dict[str, float | None]
+    confusion: dict[str, int]
+    pixel_count: int
+    created_at: datetime
+    claim_scope: str
+
+
+class WorkflowCreateRequest(BaseModel):
+    name: str = Field(default="遥感解译编排", min_length=1, max_length=120)
+    dataset_id: str = Field(min_length=1, max_length=64)
+    task: TaskType
+    model_ids: list[str] = Field(default_factory=list, max_length=4)
+    model_parameters: dict[str, dict[str, float]] = Field(default_factory=dict)
+    threshold: float | None = Field(default=None, ge=0.05, le=0.95, exclude=True)
+
+
+class WorkflowStep(BaseModel):
+    id: str
+    kind: str
+    label: str
+    status: WorkflowStepStatus = WorkflowStepStatus.PENDING
+    model_id: str | None = None
+    job_id: str | None = None
+    evaluation_id: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    error: str | None = None
+
+
+class WorkflowRecord(BaseModel):
+    id: str
+    name: str
+    dataset_id: str
+    dataset_version: str
+    task: TaskType
+    model_ids: list[str]
+    model_parameters: dict[str, dict[str, float]] = Field(default_factory=dict)
+    status: WorkflowStatus
+    steps: list[WorkflowStep]
+    job_ids: list[str] = Field(default_factory=list)
+    evaluation_ids: list[str] = Field(default_factory=list)
+    summary: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+    error: str | None = None

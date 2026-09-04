@@ -30,6 +30,7 @@ class EngineOutput:
     summary: str
     files: dict[str, tuple[Path, str, str]]
     features: dict[str, Any]
+    provenance: dict[str, Any]
 
 
 class DemoInterpretationEngine:
@@ -54,6 +55,7 @@ class DemoInterpretationEngine:
         output_dir: Path,
         secondary_path: Path | None = None,
         threshold: float = 0.62,
+        model_id: str | None = None,
     ) -> EngineOutput:
         started = time.perf_counter()
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -68,7 +70,11 @@ class DemoInterpretationEngine:
                     primary_image.size, Image.Resampling.BILINEAR
                 )
                 secondary = np.asarray(secondary_image, dtype=np.float32) / 255.0
-            result = self._change_detection(primary, secondary, threshold)
+            result = (
+                self._robust_change_detection(primary, secondary, threshold)
+                if model_id == "geochange-robust-v3"
+                else self._change_detection(primary, secondary, threshold)
+            )
             display_base = secondary_image
             secondary_image.save(output_dir / "secondary.png", optimize=True)
         elif task is TaskType.LAND_COVER:
@@ -125,6 +131,7 @@ class DemoInterpretationEngine:
                 "后时相影像",
                 "image/png",
             )
+        robust_change = model_id == "geochange-robust-v3"
         return EngineOutput(
             metrics=metrics,
             histogram=self._histogram(result["confidence"]),
@@ -132,6 +139,14 @@ class DemoInterpretationEngine:
             summary=result["summary"],
             files=files,
             features=features,
+            provenance={
+                "engine": "robust-change-cpu" if robust_change else self.id,
+                "engine_version": "3.0.0" if robust_change else self.version,
+                "backend": "builtin-robust-change" if robust_change else "lite",
+                "device": "cpu",
+                "model_id": model_id,
+                "reproducibility": "deterministic CPU baseline",
+            },
         )
 
     def _read_image(self, path: Path) -> tuple[Image.Image, np.ndarray]:
@@ -201,6 +216,139 @@ class DemoInterpretationEngine:
             "summary": "检测到的区域是可解释差异基线输出；季节、光照和配准误差仍需人工核验。",
         }
 
+    def _robust_change_detection(
+        self, before: np.ndarray, after: np.ndarray, threshold: float
+    ) -> dict[str, Any]:
+        """Deterministic change baseline robust to small shifts and radiometry drift."""
+        shift_y, shift_x = self._estimate_translation(before, after)
+        aligned = self._shift_image(before, shift_y, shift_x, fill=after)
+
+        adjusted = np.empty_like(aligned)
+        for channel in range(3):
+            source = aligned[..., channel]
+            target = after[..., channel]
+            source_median = float(np.median(source))
+            target_median = float(np.median(target))
+            source_scale = float(np.quantile(source, 0.90) - np.quantile(source, 0.10))
+            target_scale = float(np.quantile(target, 0.90) - np.quantile(target, 0.10))
+            adjusted[..., channel] = np.clip(
+                (source - source_median) * target_scale / max(source_scale, 0.05)
+                + target_median,
+                0.0,
+                1.0,
+            )
+
+        before_gray = adjusted.mean(axis=2)
+        after_gray = after.mean(axis=2)
+        colour_delta = np.mean(np.abs(after - adjusted), axis=2)
+        luminance_delta = np.abs(after_gray - before_gray)
+        structure_delta = np.abs(self._gradient(after_gray) - self._gradient(before_gray))
+        score = self._normalise(
+            colour_delta * 0.58 + luminance_delta * 0.22 + structure_delta * 0.20
+        )
+        adaptive = float(np.quantile(score, np.clip(0.72 + threshold * 0.22, 0.78, 0.92)))
+        raw_mask = score >= adaptive
+        mask_image = Image.fromarray((raw_mask * 255).astype(np.uint8), mode="L")
+        mask_image = mask_image.filter(ImageFilter.MedianFilter(3)).filter(
+            ImageFilter.MaxFilter(3)
+        )
+        mask = np.asarray(mask_image, dtype=np.uint8) > 0
+        confidence = np.clip((score - adaptive) / max(1e-6, 1.0 - adaptive), 0.0, 1.0)
+        uncertainty = np.clip(1.0 - np.abs(score - adaptive) / 0.24, 0.0, 1.0)
+        colour = np.zeros_like(after)
+        colour[mask] = np.asarray(PALETTE["change"], dtype=np.float32) / 255.0
+        coverage = float(mask.mean())
+        features = self._features_from_mask(mask, "change")
+        return {
+            "mask": mask,
+            "colour": colour,
+            "alpha": mask.astype(np.float32) * 0.68,
+            "confidence": confidence,
+            "uncertainty": uncertainty,
+            "features": features,
+            "metrics": {
+                "predicted_change_pct": round(coverage * 100, 2),
+                "mean_confidence_proxy": round(
+                    float(confidence[mask].mean()) if mask.any() else 0.0, 3
+                ),
+                "mean_uncertainty_proxy": round(float(uncertainty.mean()), 3),
+                "registration_shift_x_px": shift_x,
+                "registration_shift_y_px": shift_y,
+                "region_count": len(features["features"]),
+            },
+            "legend": [
+                {"label": "预测变化", "colour": "#ef5475", "share": round(coverage, 4)},
+                {"label": "稳定区域", "colour": "#25304a", "share": round(1 - coverage, 4)},
+            ],
+            "summary": (
+                "结果来自小范围平移校正、辐射归一化与多线索差异融合；"
+                "它比简单像素差更稳健，但仍需用同区域真值评测。"
+            ),
+        }
+
+    @staticmethod
+    def _estimate_translation(
+        before: np.ndarray, after: np.ndarray, max_shift: int = 6
+    ) -> tuple[int, int]:
+        height, width = before.shape[:2]
+        scale = min(1.0, 256 / max(height, width))
+        if scale < 1.0:
+            size = (max(1, round(width * scale)), max(1, round(height * scale)))
+            before_small = np.asarray(
+                Image.fromarray((before * 255).astype(np.uint8)).resize(
+                    size, Image.Resampling.BILINEAR
+                ),
+                dtype=np.float32,
+            ).mean(axis=2)
+            after_small = np.asarray(
+                Image.fromarray((after * 255).astype(np.uint8)).resize(
+                    size, Image.Resampling.BILINEAR
+                ),
+                dtype=np.float32,
+            ).mean(axis=2)
+        else:
+            before_small = before.mean(axis=2) * 255
+            after_small = after.mean(axis=2) * 255
+
+        best = (float("inf"), 0, 0)
+        small_height, small_width = before_small.shape
+        bounded_shift = min(max_shift, max(1, min(small_height, small_width) // 8))
+        for shift_y in range(-bounded_shift, bounded_shift + 1):
+            for shift_x in range(-bounded_shift, bounded_shift + 1):
+                before_y, after_y = DemoInterpretationEngine._overlap_slices(
+                    small_height, shift_y
+                )
+                before_x, after_x = DemoInterpretationEngine._overlap_slices(
+                    small_width, shift_x
+                )
+                difference = np.mean(
+                    np.abs(
+                        before_small[before_y, before_x]
+                        - after_small[after_y, after_x]
+                    )
+                )
+                candidate = (float(difference), shift_y, shift_x)
+                if candidate < best:
+                    best = candidate
+        return round(best[1] / scale), round(best[2] / scale)
+
+    @staticmethod
+    def _overlap_slices(length: int, shift: int) -> tuple[slice, slice]:
+        if shift >= 0:
+            return slice(0, length - shift), slice(shift, length)
+        return slice(-shift, length), slice(0, length + shift)
+
+    @classmethod
+    def _shift_image(
+        cls, image: np.ndarray, shift_y: int, shift_x: int, *, fill: np.ndarray
+    ) -> np.ndarray:
+        height, width = image.shape[:2]
+        shifted = fill.copy()
+        before_y, after_y = cls._overlap_slices(height, shift_y)
+        before_x, after_x = cls._overlap_slices(width, shift_x)
+        shifted[after_y, after_x] = image[before_y, before_x]
+        return shifted
+
     def _land_cover(self, image: np.ndarray) -> dict[str, Any]:
         red, green, blue = image[..., 0], image[..., 1], image[..., 2]
         brightness = image.mean(axis=2)
@@ -214,15 +362,18 @@ class DemoInterpretationEngine:
         ordered = np.sort(scores, axis=-1)
         confidence = self._normalise(ordered[..., -1] - ordered[..., -2])
         uncertainty = 1.0 - confidence
-        colours = np.asarray(
-            [
-                PALETTE["water"],
-                PALETTE["vegetation"],
-                PALETTE["built_up"],
-                PALETTE["bare_land"],
-            ],
-            dtype=np.float32,
-        ) / 255.0
+        colours = (
+            np.asarray(
+                [
+                    PALETTE["water"],
+                    PALETTE["vegetation"],
+                    PALETTE["built_up"],
+                    PALETTE["bare_land"],
+                ],
+                dtype=np.float32,
+            )
+            / 255.0
+        )
         colour = colours[labels]
         alpha = np.full(labels.shape, 0.58, dtype=np.float32)
         shares = [(labels == index).mean() for index in range(4)]
@@ -391,7 +542,7 @@ class DemoInterpretationEngine:
         ]
         return {
             "type": "FeatureCollection",
-            "name": f"i2rsi-{label}-pixel-coordinates",
+            "name": f"terrainterpret-{label}-pixel-coordinates",
             "coordinate_reference": "pixel (origin: top-left)",
             "features": features,
         }
